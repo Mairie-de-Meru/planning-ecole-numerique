@@ -149,7 +149,7 @@ export default async function ConventionsAdmin() {
               <Field label="Adresse du prêteur">
                 <Input name="lenderAddress" defaultValue={settings.lenderAddress} />
               </Field>
-              <Field label="Représenté par" hint="Ex. : Madame Nathalie RAVIER, Maire">
+              <Field label="Représenté par" hint="Ex. : Monsieur Abdelafid MOKHTARI, Maire">
                 <Input name="lenderRepresentative" defaultValue={settings.lenderRepresentative} />
               </Field>
               <div className="grid gap-5 sm:grid-cols-2">

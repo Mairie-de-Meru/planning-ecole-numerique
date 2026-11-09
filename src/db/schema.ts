@@ -37,7 +37,7 @@ export const settings = pgTable("settings", {
   appName: text("app_name").notNull().default("Mallettes pédagogiques"),
   lenderName: text("lender_name").notNull().default("Ville de Méru"),
   lenderAddress: text("lender_address").notNull().default("Hôtel de Ville, BP 129, 60111 Méru Cedex"),
-  lenderRepresentative: text("lender_representative").notNull().default("Madame Nathalie RAVIER, Maire"),
+  lenderRepresentative: text("lender_representative").notNull().default("Monsieur Abdelafid MOKHTARI, Maire"),
   lenderSignatoryName: text("lender_signatory_name").notNull().default("Gildas DUMONT"),
   lenderSignatoryTitle: text("lender_signatory_title").notNull().default("Technicien informatique"),
   itService: text("it_service").notNull().default("service informatique de la Ville de Méru"),

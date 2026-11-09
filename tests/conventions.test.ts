@@ -67,7 +67,7 @@ describe("conventions", () => {
     expect(c.convention.body).toContain("**École maternelle Bellonte**");
     expect(c.convention.body).toContain("un lecteur de programmation et des tapis de jeu.");
     expect(c.convention.body).toContain("**Bureau de direction**");
-    expect(c.convention.body).toContain("Madame Nathalie RAVIER, Maire");
+    expect(c.convention.body).toContain("Monsieur Abdelafid MOKHTARI, Maire");
     expect(c.convention.body).toContain("uniquement par le service informatique de la Ville de Méru");
     expect(c.convention.loanSheet).toEqual([
       { label: "Robot Bluebots 1", serial: "RBLUEBOT1", qty: 1, state: "Bon état", stateOut: null, stateIn: null },
