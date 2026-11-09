@@ -149,13 +149,14 @@ export function SignatureForm({
   footer,
 }: {
   html?: string | null;
-  defaults: { signerName: string; signerTitle: string };
+  defaults: { signerName: string; signerTitle: string; storageLocation?: string | null };
   submitLabel: string;
   onSubmit: (sign: SignInput) => Promise<ActionResult>;
   footer?: ReactNode;
 }) {
   const [name, setName] = useState(defaults.signerName);
   const [title, setTitle] = useState(defaults.signerTitle || "Directrice");
+  const [storage, setStorage] = useState(defaults.storageLocation || "Bureau de direction");
   const [accepted, setAccepted] = useState(false);
   const [emailCopy, setEmailCopy] = useState(false);
   const [withSignature, setWithSignature] = useState(false);
@@ -169,7 +170,14 @@ export function SignatureForm({
       onSubmit={async (e) => {
         e.preventDefault();
         setPending(true);
-        const r = await onSubmit({ accepted, signerName: name, signerTitle: title, signatureImage: withSignature ? image : null, emailCopy });
+        const r = await onSubmit({
+          accepted,
+          signerName: name,
+          signerTitle: title,
+          storageLocation: storage,
+          signatureImage: withSignature ? image : null,
+          emailCopy,
+        });
         setResult(r);
         setPending(false);
       }}
@@ -193,6 +201,17 @@ export function SignatureForm({
             ))}
           </Select>
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="storage" className="text-sm font-bold">Lieu de stockage pendant le prêt</label>
+        <Input id="storage" required list="storage-options" value={storage} onChange={(e) => setStorage(e.target.value)} />
+        <datalist id="storage-options">
+          <option value="Bureau de direction" />
+          <option value="Salle de classe fermée à clé" />
+          <option value="Local informatique fermé à clé" />
+        </datalist>
+        <p className="text-[13px] text-muted">Lieu sécurisé, sous la responsabilité du chef d&apos;établissement (article 5).</p>
       </div>
 
       <div>
@@ -224,7 +243,7 @@ export function SignatureForm({
       {result && !result.ok && <Alert tone="danger">{result.message}</Alert>}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
         {footer}
-        <Button type="submit" disabled={pending || !accepted || !name.trim() || (withSignature && !image)}>
+        <Button type="submit" disabled={pending || !accepted || !name.trim() || !storage.trim() || (withSignature && !image)}>
           {pending && <Loader2 className="size-4 animate-spin" />} {submitLabel}
         </Button>
       </div>

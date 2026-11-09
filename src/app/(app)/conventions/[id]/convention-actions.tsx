@@ -27,7 +27,7 @@ export function ConventionToolbar({ id, canEmail }: { id: string; canEmail: bool
   );
 }
 
-export function SignConvention({ id, defaults }: { id: string; defaults: { signerName: string; signerTitle: string } }) {
+export function SignConvention({ id, defaults }: { id: string; defaults: { signerName: string; signerTitle: string; storageLocation?: string } }) {
   const router = useRouter();
   return (
     <SignatureForm

@@ -52,10 +52,18 @@ function ItemFields({ item, index = 0 }: { item?: Item; index?: number }) {
         <Textarea name="contents" defaultValue={item?.contents} className="min-h-20" />
       </Field>
       <div className="grid gap-5 sm:grid-cols-[1fr_12rem]">
-        <Field label="Inventaire (repris dans la convention)" hint="Une ligne par élément, avec la quantité : « 16 tablettes avec coque ».">
-          <Textarea name="inventory" defaultValue={item?.inventory} className="min-h-32" placeholder={"1 mallette de transport\n16 tablettes avec coque"} />
+        <Field
+          label="Inventaire (fiche de prêt)"
+          hint="Une ligne par élément : Désignation | N° de série | Qté | État. L'état est mis à jour automatiquement à chaque reprise."
+        >
+          <Textarea
+            name="inventory"
+            defaultValue={item?.inventory}
+            className="min-h-48 font-mono text-[13px] leading-relaxed"
+            placeholder={"iPad 9e génération (1) | KC63HM7H4G | 1 | Très bon état\nValise de transport | N/A | 1 | Très bon état"}
+          />
         </Field>
-        <Field label="Valeur de remplacement (€)" hint="Facultatif, indiquée dans la convention.">
+        <Field label="Valeur de remplacement (€)" hint="Facultatif (champ {{valeur}} du modèle).">
           <Input name="replacementValue" type="number" min={0} step={1} defaultValue={item?.replacementValue ?? ""} />
         </Field>
       </div>

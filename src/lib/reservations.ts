@@ -1,7 +1,7 @@
 import { and, asc, count, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { Item, Period, Reservation, School } from "@/db/schema";
-import { periodState, todayParis } from "./dates";
+import { frLong, periodState, todayParis } from "./dates";
 import { icsEvent, periodFacts, renderMail, sendMail } from "./mail";
 import { adminEmails, appUrl, getSettings } from "./settings";
 import { hashToken, newToken } from "./tokens";
@@ -297,7 +297,7 @@ export async function moveReservation(input: { reservationId: string; periodId: 
   const after = (await loadFull(before.r.id))!;
   await updateConventionAfterMove(
     before.r.id,
-    `${actor.type === "admin" ? "Modifiée par le gestionnaire" : "Décalée par l'école"} : ${before.item.name}, période ${before.period.position} (${before.period.schoolYear}) → ${after.item.name}, période ${after.period.position} (${after.period.schoolYear}).`,
+    `${actor.type === "admin" ? "Modifiée par le gestionnaire" : "Décalée par l'école"} : ${before.item.name}, période ${before.period.position} (${before.period.schoolYear}), remplacée par ${after.item.name}, période ${after.period.position} (${after.period.schoolYear}), du ${frLong(after.period.startDate)} au ${frLong(after.period.endDate)}.`,
   );
   await audit(actor, "réservation décalée", before.r.id, {
     from: { period: before.period.label, year: before.period.schoolYear, item: before.item.name },

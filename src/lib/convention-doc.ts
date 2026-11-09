@@ -8,62 +8,63 @@ import PDFDocument from "pdfkit";
 
 export const DEFAULT_TEMPLATE = `# Convention de prêt de matériel pédagogique
 
-## Entre les soussignés
-**{{preteur}}**, {{preteur_adresse}}, ci-après « le prêteur », représenté pour l'exécution de la présente convention par le {{service_informatique}} ;
-et **{{ecole}}**, {{ecole_adresse}}, ci-après « l'école », représentée par {{signataire}}, {{fonction}}.
+## Entre
+**{{preteur}}**, {{preteur_adresse}}, représentée par {{preteur_representant}}, désignée comme « le prêteur » ;
+et **l'Éducation nationale**, représentée par {{signataire}}, {{fonction}} de l'**{{ecole}}**, {{ecole_adresse}}, désignée comme « l'emprunteur ».
+L'emprunteur s'engage à respecter les prescriptions ci-après.
 
-## Article 1 – Objet
-Le prêteur met gratuitement à la disposition de l'école le matériel pédagogique suivant : **{{materiel}}**.
-{{inventaire}}
-Valeur de remplacement indicative : {{valeur}}.
+## Préambule
+La Ville de Méru met à disposition des écoles maternelles de la ville qui le souhaitent le matériel pédagogique **{{materiel}}** : {{presentation}} Le détail figure dans la fiche de prêt ci-après.
+L'académie d'Amiens a apporté son soutien et assuré une formation lors du déploiement du dispositif.
+Le planning de prêt est établi par le {{service_informatique}} et consultable en ligne : chaque école y réserve sa période.
+L'emprunteur bénéficie du matériel temporairement et à titre gratuit pour la {{periode}}, du {{date_debut}} au {{date_fin}}.
 
-## Article 2 – Durée du prêt
-Le prêt est consenti pour la {{periode}}, du {{date_debut}} au {{date_fin}}.
+## Article 1 – Acceptation en ligne
+La présente convention est acceptée en ligne au moment de la réservation. La case « J'ai lu et j'accepte la convention de prêt » cochée par la directrice ou le directeur, accompagnée le cas échéant de sa signature, vaut signature. La date, l'heure et l'adresse e-mail de l'école sont enregistrées. Aucun document papier n'est à fournir.
+
+## Article 2 – Fiche de prêt
+La fiche de prêt ci-après fait partie de la convention. Elle est complétée contradictoirement par le {{service_informatique}} à la livraison et à la reprise du matériel : état de fonctionnement, accessoires et observations.
 
 ## Article 3 – Livraison et reprise
-La livraison et la reprise du matériel sont effectuées **uniquement par le {{service_informatique}}**, à l'adresse de l'école, au début et à la fin de la période.
-L'école ne transporte pas le matériel et ne le confie pas à une autre école ou à un tiers.
-Le contenu est vérifié avec l'école à la livraison et à la reprise ; toute anomalie est signalée au {{service_informatique}}.
+La livraison et la reprise du matériel sont effectuées **uniquement par le {{service_informatique}}**, à l'école, au début et à la fin de la période. Le transport est à la charge du prêteur et compris dans l'assurance qu'il a souscrite. L'emprunteur ne déplace pas le matériel hors de l'école et ne le confie pas à une autre école.
 
-## Article 4 – Utilisation
-- Le matériel est utilisé à des fins exclusivement pédagogiques, dans les locaux de l'école, sous la responsabilité des enseignants.
-- Les élèves l'utilisent sous la surveillance d'un adulte.
-- Sur les tablettes, aucune application n'est installée ou supprimée, aucun réglage n'est modifié et aucun compte personnel n'est créé.
-- Les cartes de programmation plastifiées sont conservées au complet : chaque carte correspond à une instruction donnée au robot, une carte manquante rend le jeu incomplet.
-- Aucune donnée personnelle des élèves (photos, prénoms, travaux) ne doit rester sur le matériel à la reprise.
+## Article 4 – Fin du prêt
+Le matériel est tenu prêt pour la reprise, complet et rangé, au plus tard 24 heures avant le début des vacances scolaires ou à la date convenue avec le {{service_informatique}}.
 
-## Article 5 – Conservation
-Entre deux séances, le matériel est rangé dans un local fermé, à l'abri de la chaleur, de l'humidité et des chocs, et rechargé selon les consignes fournies.
+## Article 5 – Stockage
+Pendant toute la durée du prêt, le matériel est stocké dans un lieu sécurisé, sous la responsabilité du chef d'établissement : **{{lieu_stockage}}**.
 
-## Article 6 – Incident, perte ou dégradation
-Toute panne, perte ou dégradation est signalée sans délai au {{service_informatique}} ({{contact_informatique}}). L'école n'effectue aucune réparation elle-même.
+## Article 6 – Utilisation
+L'emprunteur s'engage à ne pas apporter de modification au matériel prêté (applications, réglages, comptes, étiquettes). Les accessoires – coques, cartes de programmation plastifiées, tapis de jeu – sont conservés au complet.
 
-## Article 7 – Maintenance
-Le {{service_informatique}} assure la maintenance du matériel pendant les vacances scolaires, entre deux prêts. Les tablettes sont réinitialisées à chaque reprise : les contenus créés pendant le prêt sont effacés.
+## Article 7 – Responsabilité
+Le prêteur ne peut être tenu responsable en cas d'utilisation frauduleuse ou illicite du matériel emprunté.
 
-## Article 8 – Décalage et annulation
-La réservation peut être décalée ou annulée depuis la plateforme de réservation jusqu'au début de la période. Un décalage met à jour les dates de la présente convention sans nouvelle signature.
+## Article 8 – Dysfonctionnement
+En cas de dysfonctionnement, l'emprunteur prévient immédiatement le {{service_informatique}} ({{contact_informatique}}), qui récupère le matériel ; l'incident est noté sur la fiche de prêt. L'école n'effectue aucune réparation.
 
-## Article 9 – Acceptation
-La présente convention est acceptée en ligne. La case « J'ai lu et j'accepte la convention de prêt » cochée par le signataire, accompagnée le cas échéant de sa signature, vaut signature. La date, l'heure et l'adresse e-mail de l'école sont enregistrées.
+## Article 9 – Entretien
+L'emprunteur nettoie le matériel après chaque utilisation avec les lingettes désinfectantes mises à disposition.
 `;
 
 export const PLACEHOLDERS: [string, string][] = [
-  ["preteur", "Nom du prêteur"],
+  ["preteur", "Prêteur (Ville de Méru)"],
   ["preteur_adresse", "Adresse du prêteur"],
+  ["preteur_representant", "Représentant du prêteur (Maire)"],
   ["service_informatique", "Service chargé de la livraison"],
   ["contact_informatique", "Contact du service"],
   ["ecole", "Nom de l'école"],
   ["ecole_adresse", "Adresse de l'école"],
-  ["signataire", "Nom du signataire"],
-  ["fonction", "Directrice / Directeur"],
+  ["signataire", "Directrice ou directeur"],
+  ["fonction", "Fonction du signataire"],
   ["materiel", "Nom de la mallette"],
-  ["inventaire", "Inventaire (une ligne par élément)"],
-  ["valeur", "Valeur de remplacement"],
+  ["presentation", "Présentation de la mallette"],
+  ["inventaire", "Inventaire résumé"],
   ["periode", "Période et année scolaire"],
   ["date_debut", "Premier jour du prêt"],
   ["date_fin", "Dernier jour du prêt"],
   ["annee_scolaire", "Année scolaire"],
+  ["lieu_stockage", "Lieu de stockage (indiqué à la signature)"],
 ];
 
 export function fillTemplate(body: string, vars: Record<string, string>): string {
@@ -130,6 +131,15 @@ export function toHtml(text: string): string {
 export type PdfMeta = {
   number: string;
   lender: string;
+  lenderAddress: string;
+  lenderSignatory: { name: string; title: string };
+  school: string;
+  item: string;
+  loan: { from: string; to: string };
+  storage: string | null;
+  sheet: { label: string; serial: string; qty: number; stateOut: string | null; stateIn: string | null }[];
+  delivery: { at: string; by: string; note: string } | null;
+  returned: { at: string; by: string; note: string } | null;
   appName: string;
   status: "to_sign" | "signed" | "cancelled";
   signer?: { name: string; title: string; email: string; at: string; method: string; image?: string | null } | null;
@@ -165,8 +175,10 @@ export function toPdf(text: string, meta: PdfMeta): Promise<Buffer> {
     const width = doc.page.width - 124;
 
     doc.font("Helvetica-Bold").fontSize(9).fillColor(accent).text(pdfSafe(meta.lender).toUpperCase(), left, 56, { characterSpacing: 0.6, width });
+    doc.font("Helvetica").fontSize(8).fillColor(muted).text(pdfSafe(meta.lenderAddress), left, 68, { width });
     doc.font("Helvetica").fontSize(9).fillColor(muted).text(`Convention n° ${meta.number}`, left, 56, { align: "right", width });
-    doc.moveDown(1.4);
+    doc.y = 104;
+    doc.x = left;
 
     const rich = (s: string, x: number, w: number, size: number, align: "left" | "justify") => {
       const parts = pdfSafe(s).split(/\*\*(.+?)\*\*/g);
@@ -209,7 +221,9 @@ export function toPdf(text: string, meta: PdfMeta): Promise<Buffer> {
         doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(pdfSafe(`${a.at} — ${a.text}`), left, doc.y, { width });
     }
 
-    doc.moveDown(1.4);
+    doc.moveDown(0.8);
+    doc.font("Helvetica").fontSize(10).fillColor(ink).text(pdfSafe(`Fait à Méru, le ${meta.signer?.at.split(" à ")[0] ?? "…"}`), left, doc.y, { width, align: "right" });
+    doc.moveDown(0.8);
     if (doc.y > doc.page.height - 230) doc.addPage();
     const top = doc.y;
     const colW = (width - 20) / 2;
@@ -241,7 +255,84 @@ export function toPdf(text: string, meta: PdfMeta): Promise<Buffer> {
           : ["En attente de signature"],
       meta.status !== "cancelled" ? s?.image : null,
     );
-    box(left + colW + 20, "Pour le prêteur", [meta.lender, `Convention établie et horodatée par la plateforme « ${meta.appName} ».`]);
+    box(left + colW + 20, "Pour le prêteur", [
+      meta.lenderSignatory.name,
+      meta.lenderSignatory.title,
+      meta.lender,
+      `Convention établie et horodatée par la plateforme « ${meta.appName} ».`,
+    ]);
+    doc.y = top + h + 8;
+    doc.x = left;
+
+    /* ---------------- Fiche de prêt ---------------- */
+    doc.addPage();
+    doc.font("Helvetica-Bold").fontSize(17).fillColor(ink).text("Fiche de prêt", left, doc.y, { width });
+    doc.moveTo(left, doc.y + 6).lineTo(left + 48, doc.y + 6).lineWidth(3).strokeColor("#e0625b").stroke();
+    doc.moveDown(1.2);
+    const info: [string, string][] = [
+      ["Prêteur", meta.lender],
+      ["Emprunteur", meta.school],
+      ["Matériel", meta.item],
+      ["Prêt", `du ${meta.loan.from} au ${meta.loan.to}`],
+      ["Lieu de stockage", meta.storage || "à préciser par l'école"],
+    ];
+    for (const [k, v] of info) {
+      const y = doc.y;
+      doc.font("Helvetica").fontSize(9.5).fillColor(muted).text(k, left, y, { width: 110 });
+      doc.font("Helvetica-Bold").fontSize(9.5).fillColor(ink).text(pdfSafe(v), left + 115, y, { width: width - 115 });
+      doc.moveDown(0.25);
+    }
+    doc.moveDown(0.6);
+
+    const cols = [
+      { t: "Désignation", w: 0.35 },
+      { t: "N° de série", w: 0.21 },
+      { t: "Qté", w: 0.06 },
+      { t: "État à la remise", w: 0.19 },
+      { t: "État à la reprise", w: 0.19 },
+    ].map((c) => ({ ...c, w: c.w * width }));
+    const row = (cells: string[], header = false) => {
+      const y0 = doc.y;
+      let x = left;
+      let maxH = 0;
+      cells.forEach((c, i) => {
+        const hgt = doc.font(header ? "Helvetica-Bold" : "Helvetica").fontSize(header ? 8.5 : 9).heightOfString(pdfSafe(c), { width: cols[i].w - 10 });
+        maxH = Math.max(maxH, hgt);
+      });
+      const rh = maxH + 10;
+      if (y0 + rh > doc.page.height - 80) {
+        doc.addPage();
+        return row(cells, header);
+      }
+      if (header) doc.rect(left, y0, width, rh).fill("#f3efe5");
+      cells.forEach((c, i) => {
+        doc.font(header ? "Helvetica-Bold" : "Helvetica").fontSize(header ? 8.5 : 9).fillColor(header ? muted : ink).text(pdfSafe(c), x + 5, y0 + 5, { width: cols[i].w - 10 });
+        x += cols[i].w;
+      });
+      doc.moveTo(left, y0 + rh).lineTo(left + width, y0 + rh).lineWidth(0.5).strokeColor("#d8d0bd").stroke();
+      doc.y = y0 + rh;
+    };
+    row(cols.map((c) => c.t), true);
+    for (const l of meta.sheet) row([l.label, l.serial || "N/A", String(l.qty), l.stateOut ?? "", l.stateIn ?? ""]);
+    doc.moveDown(1);
+
+    const handover = (title: string, d: { at: string; by: string; note: string } | null) => {
+      if (doc.y > doc.page.height - 140) doc.addPage();
+      const y0 = doc.y;
+      doc.roundedRect(left, y0, width, 66, 8).lineWidth(0.8).strokeColor("#d8d0bd").stroke();
+      doc.font("Helvetica-Bold").fontSize(8.5).fillColor(muted).text(title.toUpperCase(), left + 12, y0 + 10, { characterSpacing: 0.5 });
+      doc.font("Helvetica").fontSize(9.5).fillColor(ink);
+      if (d) {
+        doc.text(pdfSafe(`Le ${d.at}, par ${d.by} (pour le prêteur), en présence de l'école.`), left + 12, y0 + 26, { width: width - 24 });
+        doc.text(pdfSafe(`Observation : ${d.note || "—"}`), left + 12, doc.y + 2, { width: width - 24 });
+      } else {
+        doc.fillColor(muted).text("À compléter par le service informatique.", left + 12, y0 + 26, { width: width - 24 });
+      }
+      doc.y = y0 + 76;
+      doc.x = left;
+    };
+    handover("Remise du matériel", meta.delivery);
+    handover("Reprise du matériel", meta.returned);
 
     const range = doc.bufferedPageRange();
     for (let i = 0; i < range.count; i++) {

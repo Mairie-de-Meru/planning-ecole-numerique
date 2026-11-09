@@ -35,10 +35,15 @@ export const settings = pgTable("settings", {
   maxPerSchoolPerPeriod: integer("max_per_school_per_period").notNull().default(0),
   notifyAdmin: boolean("notify_admin").notNull().default(true),
   appName: text("app_name").notNull().default("Mallettes pédagogiques"),
-  lenderName: text("lender_name").notNull().default("Mairie de Méru"),
-  lenderAddress: text("lender_address").notNull().default("Place de l'Hôtel de Ville, 60110 Méru"),
-  itService: text("it_service").notNull().default("Service informatique de la Mairie de Méru"),
-  itContact: text("it_contact").notNull().default("03 44 52 36 00"),
+  lenderName: text("lender_name").notNull().default("Ville de Méru"),
+  lenderAddress: text("lender_address").notNull().default("Hôtel de Ville, BP 129, 60111 Méru Cedex"),
+  lenderRepresentative: text("lender_representative").notNull().default("Madame Nathalie RAVIER, Maire"),
+  lenderSignatoryName: text("lender_signatory_name").notNull().default("Gildas DUMONT"),
+  lenderSignatoryTitle: text("lender_signatory_title").notNull().default("Technicien informatique"),
+  itService: text("it_service").notNull().default("service informatique de la Ville de Méru"),
+  itContact: text("it_contact").notNull().default("Alain MARTINEZ, 03 44 52 34 14"),
+  /** Découpe la dernière période (printemps → été) en deux : fin mai / juin. */
+  splitJune: boolean("split_june").notNull().default(true),
   lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
   lastSyncStatus: text("last_sync_status"),
 });
@@ -216,6 +221,16 @@ export const conventions = pgTable("conventions", {
   signedAt: timestamp("signed_at", { withTimezone: true }),
   signedIp: text("signed_ip"),
   emailCopy: boolean("email_copy").notNull().default(false),
+  /** Lieu de stockage indiqué par l'école à la signature. */
+  storageLocation: text("storage_location"),
+  /** Fiche de prêt : inventaire figé + états à la remise et à la reprise. */
+  loanSheet: jsonb("loan_sheet").notNull().default([]), // LoanLine[]
+  deliveredAt: date("delivered_at"),
+  deliveredBy: text("delivered_by"),
+  deliveryNote: text("delivery_note"),
+  returnedAt: date("returned_at"),
+  returnedBy: text("returned_by"),
+  returnNote: text("return_note"),
   amendments: jsonb("amendments").notNull().default([]), // { at, text }[]
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

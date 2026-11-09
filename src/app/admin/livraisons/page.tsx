@@ -70,11 +70,11 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
                     <th className="px-5 py-3 font-semibold">Adresse de livraison</th>
                     <th className="px-5 py-3 font-semibold">Contact</th>
                     <th className="px-5 py-3 font-semibold">Mallette</th>
-                    <th className="no-print px-5 py-3 font-semibold">Livrée</th>
+                    <th className="px-5 py-3 font-semibold">Fiche de prêt</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {rows.map(({ r, item, school }) => (
+                  {rows.map(({ r, item, school, convention }) => (
                     <tr key={r.id} className="align-top">
                       <td className="px-5 py-3 font-semibold">{school.name || school.email}</td>
                       <td className="whitespace-pre-line px-5 py-3 text-ink-2">{school.address}</td>
@@ -84,7 +84,17 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
                         <div className="text-muted">{school.email}</div>
                       </td>
                       <td className="px-5 py-3">{item.name}</td>
-                      <td className="no-print px-5 py-3"><input type="checkbox" aria-label="Livrée" className="size-4 accent-[var(--accent)]" /></td>
+                      <td className="px-5 py-3">
+                        {convention ? (
+                          <Link href={`/conventions/${convention.id}`} className="font-bold text-accent hover:underline">
+                            {convention.returnedAt ? "Reprise faite" : convention.deliveredAt ? "Livrée — reprise à faire" : "Remise à faire"}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                        {convention?.status === "to_sign" && <div className="text-xs font-semibold text-warn">Convention à signer</div>}
+                        {convention?.storageLocation && <div className="text-xs text-muted">Stockage : {convention.storageLocation}</div>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

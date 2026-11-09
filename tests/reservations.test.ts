@@ -20,7 +20,7 @@ let schoolA = "";
 let schoolB = "";
 
 const tokenOf = (url: string) => url.split("/confirmer/")[1];
-const sign = { accepted: true, signerName: "Mme Test", signerTitle: "Directrice", emailCopy: false };
+const sign = { accepted: true, signerName: "Mme Test", signerTitle: "Directrice", storageLocation: "Bureau de direction", emailCopy: false };
 
 beforeEach(async () => {
   await db.execute(sql`truncate conventions, convention_templates, reservations, audit_log, mail_log, periods, items, schools, settings, admins cascade`);

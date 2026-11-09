@@ -10,7 +10,7 @@ let itemId = "";
 let p1 = "";
 let p2 = "";
 let schoolId = "";
-const sign = { accepted: true, signerName: "Estelle MENDES", signerTitle: "Directrice", emailCopy: true };
+const sign = { accepted: true, signerName: "Estelle MENDES", signerTitle: "Directrice", storageLocation: "Bureau de direction", emailCopy: true };
 const tokenOf = (url: string) => url.split("/confirmer/")[1];
 
 beforeEach(async () => {
@@ -18,7 +18,11 @@ beforeEach(async () => {
   await updateSettings({ zone: "B", notifyAdmin: false });
   [{ id: itemId }] = await db
     .insert(schema.items)
-    .values({ name: "Sac robotique", inventory: "1 sac de transport noir\n1 lecteur de cartes de programmation", replacementValue: 1200 })
+    .values({
+      name: "Robots Bluebots",
+      contents: "Un sac de transport contenant 6 robots, un lecteur de programmation et des tapis de jeu",
+      inventory: "Robot Bluebots 1 | RBLUEBOT1 | 1 | Bon état\nLecteur de programmation | TR1 | 1 | Bon état\nLingettes nettoyantes | N/A | 1",
+    })
     .returning();
   [{ id: p1 }, { id: p2 }] = await db
     .insert(schema.periods)
@@ -61,9 +65,15 @@ describe("conventions", () => {
     expect(c.convention.status).toBe("signed");
     expect(c.convention.signedIp).toBe("1.2.3.4");
     expect(c.convention.body).toContain("**École maternelle Bellonte**");
-    expect(c.convention.body).toContain("- 1 lecteur de cartes de programmation");
-    expect(c.convention.body).toContain("1 200 €");
-    expect(c.convention.body).toContain("uniquement par le Service informatique");
+    expect(c.convention.body).toContain("un lecteur de programmation et des tapis de jeu.");
+    expect(c.convention.body).toContain("**Bureau de direction**");
+    expect(c.convention.body).toContain("Madame Nathalie RAVIER, Maire");
+    expect(c.convention.body).toContain("uniquement par le service informatique de la Ville de Méru");
+    expect(c.convention.loanSheet).toEqual([
+      { label: "Robot Bluebots 1", serial: "RBLUEBOT1", qty: 1, state: "Bon état", stateOut: null, stateIn: null },
+      { label: "Lecteur de programmation", serial: "TR1", qty: 1, state: "Bon état", stateOut: null, stateIn: null },
+      { label: "Lingettes nettoyantes", serial: "", qty: 1, state: "", stateOut: null, stateIn: null },
+    ]);
     expect(c.convention.body).not.toMatch(/\{\{/);
     await confirmReservation(tokenOf(confirmUrl));
     const pdf = (await conventionPdf(c.convention.id))!;
@@ -78,6 +88,7 @@ describe("conventions", () => {
     const c = (await getConventionByReservation(r.id))!;
     expect(c.convention.status).toBe("to_sign");
     expect(c.convention.body).toContain("Estelle MENDES");
+    expect(c.convention.body).toContain("à préciser par l'école lors de la signature");
     await signConvention({
       conventionId: c.convention.id,
       schoolId,
@@ -87,6 +98,7 @@ describe("conventions", () => {
     const after = (await getConventionByReservation(r.id))!;
     expect(after.convention.status).toBe("signed");
     expect(after.convention.signatureMethod).toBe("drawn");
+    expect(after.convention.body).toContain("**Bureau de direction**");
     await expect(signConvention({ conventionId: c.convention.id, schoolId, email: "x", sign })).rejects.toThrow(/plus à signer/);
   });
 
@@ -109,5 +121,28 @@ describe("conventions", () => {
     const { expireStalePending } = await import("@/lib/reservations");
     await expireStalePending();
     expect((await getConventionByReservation(reservation.id))!.convention.status).toBe("cancelled");
+  });
+});
+
+describe("fiche de prêt", () => {
+  it("remise puis reprise : états enregistrés et inventaire de la mallette mis à jour", async () => {
+    const { recordDelivery, recordReturn } = await import("@/lib/conventions");
+    const { reservation } = await bookReservation({ schoolId, itemId, periodId: p1, actorEmail: "bellonte@ecole.fr", sign });
+    const c = (await getConventionByReservation(reservation.id))!;
+    await expect(recordReturn(c.convention.id, { at: "2030-12-20", by: "Gildas DUMONT", note: "", states: [] })).rejects.toThrow(/remise/);
+    await recordDelivery(c.convention.id, { at: "2030-11-04", by: "Gildas DUMONT", note: "Matériel livré chargé et nettoyé.", states: ["Très bon état"] });
+    await expect(recordReturn(c.convention.id, { at: "2030-11-01", by: "Gildas DUMONT", note: "", states: [] })).rejects.toThrow(/précède/);
+    await recordReturn(c.convention.id, { at: "2030-12-19", by: "Gildas DUMONT", note: "Robot 1 rayé", states: ["Usé", "", ""] });
+    const after = (await getConventionByReservation(reservation.id))!;
+    const sheet = after.convention.loanSheet as { stateOut: string | null; stateIn: string | null }[];
+    expect(sheet.map((l) => [l.stateOut, l.stateIn])).toEqual([
+      ["Très bon état", "Usé"],
+      ["Bon état", "Bon état"],
+      [null, null],
+    ]);
+    const [item] = await db.select().from(schema.items).where(eq(schema.items.id, itemId));
+    expect(item.inventory.split("\n")[0]).toBe("Robot Bluebots 1 | RBLUEBOT1 | 1 | Usé");
+    const pdf = (await conventionPdf(c.convention.id))!;
+    expect(pdf.buffer.length).toBeGreaterThan(3000);
   });
 });

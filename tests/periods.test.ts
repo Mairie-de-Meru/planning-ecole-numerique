@@ -65,3 +65,21 @@ describe("page réelle service-public.gouv.fr (enregistrée le 9/11/2026)", () =
     expect(derivePeriods(cals[1])).toHaveLength(5);
   });
 });
+
+describe("découpage de juin", () => {
+  it("6 périodes : printemps → juin puis juin → été (comme les conventions de la ville)", () => {
+    const html = readFileSync("tests/fixtures/service-public-2026.html", "utf8");
+    const [y2627, y2728] = parseServicePublic(html, "B");
+    const p = derivePeriods(y2627, { splitJune: true });
+    expect(p.slice(4).map(({ position, label, startDate, endDate }) => ({ position, label, startDate, endDate }))).toEqual([
+      { position: 5, label: "Printemps → Juin", startDate: "2027-05-03", endDate: "2027-05-28" },
+      { position: 6, label: "Juin → Été", startDate: "2027-05-31", endDate: "2027-07-02" },
+    ]);
+    // 2025-2026 dans les conventions : 28 avril → 29 mai puis 1er juin → 3 juillet
+    const cal = { ...y2627, schoolYear: "2025-2026", holidays: { ...y2627.holidays, printemps: { start: "2026-04-11", end: "2026-04-27" }, ete: { start: "2026-07-04", end: null } } };
+    const q = derivePeriods(cal, { splitJune: true });
+    expect(q.find((x) => x.position === 5)?.endDate).toBe("2026-05-29");
+    expect(q.find((x) => x.position === 6)?.startDate).toBe("2026-06-01");
+    expect(derivePeriods(y2728, { splitJune: true })).toHaveLength(6);
+  });
+});

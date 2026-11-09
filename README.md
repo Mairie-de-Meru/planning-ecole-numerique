@@ -85,6 +85,8 @@ npm run lint
 | Plafond | Réglage « mallettes par école et par période » (0 = illimité) |
 | Décalage / annulation | Par l'école tant que la période n'a pas commencé ; par l'admin à tout moment |
 | Périodes | Lues sur service-public.gouv.fr, appliquées seulement après validation ; une période **verrouillée** n'est jamais modifiée automatiquement |
+| Fiche de prêt | Inventaire de chaque mallette (désignation, n° de série, qté, état) figé dans la convention. Le service informatique enregistre l'état à la remise et à la reprise ; l'état constaté à la reprise met à jour l'inventaire |
+| Périodes | 6 par an par défaut (la dernière est découpée fin mai / juin, comme dans les conventions papier) ; réglable |
 | Conventions | Texte figé à la signature (horodatage, e-mail, adresse IP, méthode). Un décalage met à jour les dates et ajoute une ligne « Modifications ». Le modèle est versionné : le modifier ne change pas les conventions déjà signées |
 | Photos | Envoyées depuis Admin → Mallettes, stockées dans la base (aucun service de fichiers à configurer), 3 Mo max |
 | Liens e-mail | Connexion : 20 min, usage unique. Les liens ouvrent une page avec un bouton, pour que les antivirus de messagerie ne les consomment pas |

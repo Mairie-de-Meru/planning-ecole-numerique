@@ -253,6 +253,9 @@ export async function saveLenderAction(_: ActionResult, form: FormData): Promise
   const v = {
     lenderName: String(form.get("lenderName") ?? "").trim(),
     lenderAddress: String(form.get("lenderAddress") ?? "").trim(),
+    lenderRepresentative: String(form.get("lenderRepresentative") ?? "").trim(),
+    lenderSignatoryName: String(form.get("lenderSignatoryName") ?? "").trim(),
+    lenderSignatoryTitle: String(form.get("lenderSignatoryTitle") ?? "").trim(),
     itService: String(form.get("itService") ?? "").trim(),
     itContact: String(form.get("itContact") ?? "").trim(),
   };
@@ -282,6 +285,7 @@ export async function saveSettingsAction(_: ActionResult, form: FormData): Promi
     confirmTtlMinutes: ttl,
     maxPerSchoolPerPeriod: max,
     notifyAdmin: form.get("notifyAdmin") === "on",
+    splitJune: form.get("splitJune") === "on",
   });
   refresh();
   return { ok: true, message: "Réglages enregistrés." };
@@ -301,4 +305,40 @@ export async function removeAdminAction(form: FormData) {
   const email = String(form.get("email"));
   if (email !== me.email) await db.delete(schema.admins).where(eq(schema.admins.email, email));
   refresh();
+}
+
+/* ---------------- Fiche de prêt ---------------- */
+
+function handoverFrom(form: FormData) {
+  const n = Number(form.get("lines") ?? 0);
+  return {
+    at: String(form.get("at") ?? ""),
+    by: String(form.get("by") ?? ""),
+    note: String(form.get("note") ?? ""),
+    states: Array.from({ length: n }, (_, i) => String(form.get(`state-${i}`) ?? "")),
+  };
+}
+
+export async function recordDeliveryAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  try {
+    const { recordDelivery } = await import("@/lib/conventions");
+    await recordDelivery(String(form.get("id")), handoverFrom(form));
+    refresh();
+    return { ok: true, message: "Remise enregistrée sur la fiche de prêt." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function recordReturnAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  try {
+    const { recordReturn } = await import("@/lib/conventions");
+    await recordReturn(String(form.get("id")), handoverFrom(form));
+    refresh();
+    return { ok: true, message: "Reprise enregistrée. L'inventaire de la mallette a été mis à jour." };
+  } catch (e) {
+    return fail(e);
+  }
 }

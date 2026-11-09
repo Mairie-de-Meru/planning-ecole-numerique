@@ -6,6 +6,7 @@ import { DEFAULT_TEMPLATE, fillTemplate, toHtml, toPdf } from "./convention-doc"
 import { frLong } from "./dates";
 import { renderMail, sendMail, type MailAttachment } from "./mail";
 import { appUrl, getSettings } from "./settings";
+import { inventorySummary, parseInventory, toLoanSheet, type LoanLine } from "./inventory";
 
 export class ConventionError extends BookingError {}
 
@@ -13,6 +14,8 @@ export type SignInput = {
   accepted: boolean;
   signerName: string;
   signerTitle: string;
+  /** Lieu de stockage du matériel pendant le prêt (article 5). */
+  storageLocation: string;
   signatureImage?: string | null;
   emailCopy: boolean;
 };
@@ -25,6 +28,7 @@ export function validateSign(s: SignInput): "checkbox" | "drawn" {
   const name = s.signerName.trim();
   if (name.length < 3 || name.length > 120) throw new ConventionError("Indiquez le nom de la personne qui signe la convention.");
   if (!s.signerTitle.trim() || s.signerTitle.length > 80) throw new ConventionError("Indiquez la fonction du signataire.");
+  if (!s.storageLocation?.trim() || s.storageLocation.length > 120) throw new ConventionError("Indiquez le lieu de stockage du matériel pendant le prêt.");
   if (s.signatureImage) {
     if (!s.signatureImage.startsWith("data:image/png;base64,") || s.signatureImage.length > MAX_SIGNATURE)
       throw new ConventionError("Signature illisible ou trop lourde : redessinez-la ou choisissez une autre image.");
@@ -67,28 +71,29 @@ export function conventionVars(opts: {
   item: Item;
   period: Period;
   signer?: { name: string; title: string } | null;
+  storage?: string | null;
 }): Record<string, string> {
   const { settings, school, item, period } = opts;
-  const inventory = item.inventory
-    .split(/\r?\n/)
-    .map((l) => l.trim().replace(/^[-•]\s*/, ""))
-    .filter(Boolean);
+  const presentation = item.contents.trim() || item.description.trim() || item.name;
   return {
     preteur: settings.lenderName,
     preteur_adresse: settings.lenderAddress,
+    preteur_representant: settings.lenderRepresentative,
     service_informatique: settings.itService,
     contact_informatique: settings.itContact,
-    ecole: school.name || "l'école",
+    ecole: school.name || "école",
     ecole_adresse: school.address.replace(/\s*\n\s*/g, ", ") || "adresse à compléter",
     signataire: opts.signer?.name || school.directorName || "la direction de l'école",
     fonction: opts.signer?.title || school.directorTitle || "directrice ou directeur",
     materiel: item.name,
-    inventaire: (inventory.length ? inventory : [item.description || item.name]).map((l) => `- ${l}`).join("\n"),
+    presentation: /[.!?]$/.test(presentation) ? presentation : `${presentation}.`,
+    inventaire: inventorySummary(parseInventory(item.inventory)) || item.name,
     valeur: euros(item.replacementValue),
     periode: `période ${period.position} (${period.label.replace("→", "–")}) de l'année scolaire ${period.schoolYear}`,
     date_debut: frLong(period.startDate),
     date_fin: frLong(period.endDate),
     annee_scolaire: period.schoolYear,
+    lieu_stockage: opts.storage?.trim() || "à préciser par l'école lors de la signature",
   };
 }
 
@@ -118,13 +123,16 @@ export async function createConvention(
   const parts = await loadParts(tx, opts.reservationId);
   const template = await activeTemplate(tx);
   const signer = opts.sign ? { name: opts.sign.signerName.trim(), title: opts.sign.signerTitle.trim() } : null;
-  const body = fillTemplate(template.body, conventionVars({ settings, ...parts, signer }));
+  const storage = opts.sign?.storageLocation.trim() ?? null;
+  const body = fillTemplate(template.body, conventionVars({ settings, ...parts, signer, storage }));
   const [c] = await tx
     .insert(schema.conventions)
     .values({
       reservationId: opts.reservationId,
       templateId: template.id,
       body,
+      loanSheet: toLoanSheet(parts.item.inventory),
+      storageLocation: storage,
       status: opts.sign ? "signed" : "to_sign",
       ...(opts.sign
         ? {
@@ -151,12 +159,17 @@ export async function signConvention(opts: { conventionId: string; schoolId: str
   if (c.convention.status !== "to_sign") throw new ConventionError("Cette convention n'est plus à signer.");
   const settings = await getSettings();
   const signer = { name: opts.sign.signerName.trim(), title: opts.sign.signerTitle.trim() };
-  const body = fillTemplate(await templateBody(db, c.convention.templateId), conventionVars({ settings, school: c.school, item: c.item, period: c.period, signer }));
+  const storage = opts.sign.storageLocation.trim();
+  const body = fillTemplate(
+    await templateBody(db, c.convention.templateId),
+    conventionVars({ settings, school: c.school, item: c.item, period: c.period, signer, storage }),
+  );
   await db
     .update(schema.conventions)
     .set({
       status: "signed",
       body,
+      storageLocation: storage,
       signerName: signer.name,
       signerTitle: signer.title,
       signerEmail: opts.email,
@@ -178,9 +191,11 @@ export async function updateConventionAfterMove(reservationId: string, note: str
   const settings = await getSettings();
   const parts = await loadParts(db, reservationId);
   const signer = c.signerName ? { name: c.signerName, title: c.signerTitle ?? "" } : null;
-  const body = fillTemplate(await templateBody(db, c.templateId), conventionVars({ settings, ...parts, signer }));
+  const body = fillTemplate(await templateBody(db, c.templateId), conventionVars({ settings, ...parts, signer, storage: c.storageLocation }));
   const amendments = [...((c.amendments as { at: string; text: string }[]) ?? []), { at: new Date().toISOString(), text: note }];
-  await db.update(schema.conventions).set({ body, amendments, updatedAt: new Date() }).where(eq(schema.conventions.id, c.id));
+  // Changement de mallette avant livraison : la fiche de prêt suit le nouveau matériel.
+  const loanSheet = c.deliveredAt ? c.loanSheet : toLoanSheet(parts.item.inventory);
+  await db.update(schema.conventions).set({ body, amendments, loanSheet, updatedAt: new Date() }).where(eq(schema.conventions.id, c.id));
 }
 
 /** Réservation annulée ou expirée : la convention est classée « annulée » (son texte est conservé). */
@@ -239,6 +254,15 @@ export async function conventionPdf(id: string): Promise<{ buffer: Buffer; filen
   const buffer = await toPdf(c.body, {
     number,
     lender: settings.lenderName,
+    lenderAddress: settings.lenderAddress,
+    lenderSignatory: { name: settings.lenderSignatoryName, title: settings.lenderSignatoryTitle },
+    school: full.school.name,
+    item: full.item.name,
+    loan: { from: frLong(full.period.startDate), to: frLong(full.period.endDate) },
+    storage: c.storageLocation,
+    sheet: (c.loanSheet as LoanLine[]) ?? [],
+    delivery: c.deliveredAt ? { at: frLong(c.deliveredAt), by: c.deliveredBy ?? "", note: c.deliveryNote ?? "" } : null,
+    returned: c.returnedAt ? { at: frLong(c.returnedAt), by: c.returnedBy ?? "", note: c.returnNote ?? "" } : null,
     appName: settings.appName,
     status: c.status,
     signer:
@@ -312,4 +336,51 @@ export async function listConventions() {
     .innerJoin(schema.periods, eq(schema.periods.id, schema.reservations.periodId))
     .innerJoin(schema.schools, eq(schema.schools.id, schema.reservations.schoolId))
     .orderBy(desc(schema.conventions.number));
+}
+
+/* ------------------------------------------------------------------ */
+/* Fiche de prêt : remise et reprise (service informatique)            */
+/* ------------------------------------------------------------------ */
+
+export type HandoverInput = { at: string; by: string; note: string; states: string[] };
+
+function checkHandover(h: HandoverInput) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(h.at)) throw new ConventionError("Date invalide.");
+  if (!h.by.trim()) throw new ConventionError("Indiquez qui a effectué l'opération.");
+}
+
+export async function recordDelivery(conventionId: string, h: HandoverInput) {
+  checkHandover(h);
+  const [c] = await db.select().from(schema.conventions).where(eq(schema.conventions.id, conventionId));
+  if (!c || c.status === "cancelled") throw new ConventionError("Convention introuvable ou annulée.");
+  const sheet = ((c.loanSheet as LoanLine[]) ?? []).map((l, i) => ({ ...l, stateOut: h.states[i] || l.state || null }));
+  await db
+    .update(schema.conventions)
+    .set({ loanSheet: sheet, deliveredAt: h.at, deliveredBy: h.by.trim(), deliveryNote: h.note.trim(), updatedAt: new Date() })
+    .where(eq(schema.conventions.id, conventionId));
+}
+
+/** Reprise : enregistre l'état au retour et met à jour l'inventaire de la mallette. */
+export async function recordReturn(conventionId: string, h: HandoverInput) {
+  checkHandover(h);
+  const full = await getConvention(conventionId);
+  if (!full) throw new ConventionError("Convention introuvable.");
+  const c = full.convention;
+  if (!c.deliveredAt) throw new ConventionError("Enregistrez d'abord la remise du matériel.");
+  if (h.at < c.deliveredAt) throw new ConventionError("La date de reprise précède la date de remise.");
+  const sheet = ((c.loanSheet as LoanLine[]) ?? []).map((l, i) => ({ ...l, stateIn: h.states[i] || l.stateOut || null }));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.conventions)
+      .set({ loanSheet: sheet, returnedAt: h.at, returnedBy: h.by.trim(), returnNote: h.note.trim(), updatedAt: new Date() })
+      .where(eq(schema.conventions.id, conventionId));
+    // L'état constaté à la reprise devient l'état courant du matériel (ligne retrouvée par n° de série ou désignation).
+    const current = parseInventory(full.item.inventory);
+    const updated = current.map((line) => {
+      const found = sheet.find((s) => (line.serial ? s.serial === line.serial : s.label === line.label));
+      return found?.stateIn ? { ...line, state: found.stateIn } : line;
+    });
+    const { formatInventory } = await import("./inventory");
+    await tx.update(schema.items).set({ inventory: formatInventory(updated) }).where(eq(schema.items.id, full.item.id));
+  });
 }

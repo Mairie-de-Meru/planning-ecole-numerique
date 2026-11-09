@@ -11,40 +11,46 @@ async function main() {
   const sql = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
   await sql`insert into settings (id) values (1) on conflict do nothing`;
 
-  // Matériel en circulation : 2 mallettes de tablettes et 1 sac robotique.
-  // Inventaires à compléter depuis les conventions papier (Admin → Mallettes).
-  const tabletInventory = [
-    "1 mallette de transport et de recharge à roulettes, avec sa clé",
-    "Tablettes numériques avec coque de protection",
-    "1 câble d'alimentation de la mallette",
-  ].join("\n");
+  // Matériel en circulation, repris des conventions papier (fiches de prêt, juin 2026).
+  // Format : Désignation | N° de série | Qté | État
+  const ipadAir = [
+    ["1", "SDMPS85SQG5W2"], ["2", "SDMPS85J5G5W2"], ["3", "SDMPS85CEG5W2"], ["4", "SDMPS84T2G5W2"], ["5", "SDMPS85EXG5W2"],
+    ["6", "SDMPS84W1G5W2"], ["7", "SDMPS84XSG5W2"], ["9", "SDMPS856SG5W2"], ["10", "SDMPS85B0G5W2"],
+  ].map(([n, sn]) => `iPad Air 2 Wi-Fi 128 Go silver (${n}) | ${sn} | 1 | État correct`);
+  const ipad9 = [
+    "KC63HM7H4G", "GHM46KKQ29", "K2RNPN946R", "DV9XWY9J3V", "LXKQ2CYVT4", "KMWL3HF5YC", "G1WQYDH46P", "LQMHQ9RXHW", "J9GQ123VK1", "J9YGRY3VVR",
+  ].map((sn, i) => `iPad 9e génération (${i + 1}) | ${sn} | 1 | Très bon état`);
   const items: [string, string, string, string, string | null, string][] = [
     [
-      "Mallette tablettes n°1",
-      "Tablettes numériques et leur mallette de recharge",
-      "Mallette à roulettes qui transporte, range et recharge les tablettes de la classe.",
-      tabletInventory,
+      "Mallette pédagogique A",
+      "9 iPad Air 2 dans leur valise de transport Wi-Fi",
+      "une valise de transport contenant 9 iPad Air 2, leurs protections et des lingettes désinfectantes",
+      [...ipadAir, "Valise de transport Nao Case avec Wi-Fi | N/A | 1 | État correct", "Protection iPad Urban Kids Shell | N/A | 7 | État correct", "Lingettes désinfectantes | N/A | 1"].join("\n"),
       "/mallettes/tablettes.webp",
       "encre",
     ],
     [
-      "Mallette tablettes n°2",
-      "Tablettes numériques et leur mallette de recharge",
-      "Mallette à roulettes qui transporte, range et recharge les tablettes de la classe.",
-      tabletInventory,
+      "Mallette pédagogique B",
+      "10 iPad 9e génération dans leur valise de transport",
+      "une valise de transport contenant 10 iPad 9e génération, leurs protections et des lingettes désinfectantes",
+      [...ipad9, "Valise de transport | N/A | 1 | Très bon état", "Protection iPad Urban Kids Shell | N/A | 7 | Très bon état", "Lingettes désinfectantes | N/A | 1"].join("\n"),
       "/mallettes/tablettes.webp",
       "lagon",
     ],
     [
-      "Sac robotique",
-      "Robots, lecteur de programmation et tapis de jeu",
-      "Un sac de sport noir qui réunit les robots de sol, la tablette (lecteur) de programmation avec ses cartes plastifiées d'instructions pour diriger le robot, et les tapis de jeu.",
+      "Robots Bluebots",
+      "6 robots, lecteur de programmation et tapis de jeu",
+      "un dispositif d'initiation à la programmation réuni dans un sac de transport noir : 6 robots Bluebots et leur station de recharge, un lecteur de programmation avec ses cartes plastifiées d'instructions pour diriger le robot, et trois tapis de jeu",
       [
-        "1 sac de transport noir",
-        "Robots de sol programmables et leurs câbles de recharge",
-        "1 lecteur de cartes de programmation",
-        "1 jeu de cartes plastifiées d'instructions (avancer, reculer, tourner, pause…)",
-        "Tapis de jeu quadrillés",
+        ...[1, 2, 3, 4, 5, 6].map((n) => `Robot Bluebots ${n} | RBLUEBOT${n} | 1 | Bon état`),
+        "Lecteur de programmation | TR1 | 1 | Bon état",
+        "Cartes de programmation plastifiées (jeu) | N/A | 1 | Bon état",
+        "Tapis de jeu formes 3D | N/A | 1 | Bon état",
+        "Tapis de jeu transparent | N/A | 1 | Bon état",
+        "Tapis de jeu alphabet | N/A | 1 | Bon état",
+        "Station de recharge | DR1 | 1 | Bon état",
+        "Sac de transport noir | N/A | 1 | Bon état",
+        "Lingettes nettoyantes | N/A | 1",
       ].join("\n"),
       "/mallettes/sac-robotique.webp",
       "tomate",
@@ -57,17 +63,20 @@ async function main() {
               where not exists (select 1 from items where name = ${name})`;
   }
 
+  // 2025-2026 : périodes des conventions papier. 2026-2027 : calendrier officiel zone B, juin découpé.
   const periods: [string, number, string, string, string][] = [
-    ["2025-2026", 1, "Rentrée → Toussaint", "2025-09-01", "2025-10-17"],
+    ["2025-2026", 1, "Rentrée → Toussaint", "2025-09-16", "2025-10-17"],
     ["2025-2026", 2, "Toussaint → Noël", "2025-11-03", "2025-12-19"],
-    ["2025-2026", 3, "Noël → Hiver", "2026-01-05", "2026-02-13"],
-    ["2025-2026", 4, "Hiver → Printemps", "2026-03-02", "2026-04-10"],
-    ["2025-2026", 5, "Printemps → Été", "2026-04-27", "2026-07-03"],
+    ["2025-2026", 3, "Noël → Hiver", "2026-01-06", "2026-02-06"],
+    ["2025-2026", 4, "Hiver → Printemps", "2026-03-03", "2026-04-10"],
+    ["2025-2026", 5, "Printemps → Juin", "2026-04-28", "2026-05-29"],
+    ["2025-2026", 6, "Juin → Été", "2026-06-01", "2026-07-03"],
     ["2026-2027", 1, "Rentrée → Toussaint", "2026-09-01", "2026-10-16"],
     ["2026-2027", 2, "Toussaint → Noël", "2026-11-02", "2026-12-18"],
     ["2026-2027", 3, "Noël → Hiver", "2027-01-04", "2027-02-19"],
     ["2026-2027", 4, "Hiver → Printemps", "2027-03-08", "2027-04-16"],
-    ["2026-2027", 5, "Printemps → Été", "2027-05-03", "2027-07-02"],
+    ["2026-2027", 5, "Printemps → Juin", "2027-05-03", "2027-05-28"],
+    ["2026-2027", 6, "Juin → Été", "2027-05-31", "2027-07-02"],
   ];
   for (const [y, pos, label, s, e] of periods) {
     await sql`insert into periods (school_year, position, label, start_date, end_date, zone, source)

@@ -52,6 +52,12 @@ export default async function SettingsPage() {
           </Field>
           <div className="space-y-4 rounded-xl bg-surface-2 p-4">
             <Toggle name="syncEnabled" label="Lire les dates automatiquement chaque semaine" hint="Les changements sont proposés dans l'onglet Périodes, jamais appliqués sans vous." defaultChecked={s.syncEnabled} />
+            <Toggle
+              name="splitJune"
+              label="Découper la dernière période en deux (fin mai / juin)"
+              hint="Six périodes par an, comme dans les conventions : printemps → fin mai, puis juin → été."
+              defaultChecked={s.splitJune}
+            />
             <Toggle name="notifyAdmin" label="M'avertir par e-mail des réservations" hint="Nouvelle réservation, décalage ou annulation par une école." defaultChecked={s.notifyAdmin} />
           </div>
         </ActionForm>

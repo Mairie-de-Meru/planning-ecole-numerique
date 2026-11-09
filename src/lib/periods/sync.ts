@@ -28,7 +28,7 @@ export async function runSync(): Promise<{ ok: boolean; message: string; changes
   const settings = await getSettings();
   try {
     const cals = await fetchCalendars(settings.sourceUrl, settings.zone);
-    const derived = cals.flatMap(derivePeriods);
+    const derived = cals.flatMap((c) => derivePeriods(c, { splitJune: settings.splitJune }));
     if (!derived.length) throw new Error("aucune date de vacances reconnue sur la page (structure modifiée ?)");
     const existing = await db.select().from(schema.periods).where(eq(schema.periods.zone, settings.zone));
     const changes = diffPeriods(existing, derived);
