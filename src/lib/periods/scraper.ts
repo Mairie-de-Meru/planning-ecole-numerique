@@ -263,7 +263,7 @@ export function parseServicePublic(html: string, zone: string): SchoolYearCalend
 export async function fetchCalendars(url: string, zone: string): Promise<SchoolYearCalendar[]> {
   const res = await fetch(url, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; ReservationValises/1.0)",
+      "User-Agent": "Mozilla/5.0 (compatible; ReservationMallettes/1.0)",
       Accept: "text/html",
       "Accept-Language": "fr-FR,fr;q=0.9",
     },

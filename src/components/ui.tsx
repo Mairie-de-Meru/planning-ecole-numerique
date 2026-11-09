@@ -9,13 +9,13 @@ type Size = "sm" | "md";
 
 export function buttonClass(variant: Variant = "primary", size: Size = "md", extra?: string) {
   return cx(
-    "inline-flex items-center justify-center gap-2 rounded-xl font-bold transition active:translate-y-px disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap",
+    "inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-colors disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap",
     size === "md" ? "h-10 px-4 text-sm" : "h-8 px-3 text-[13px]",
     variant === "primary" &&
-      "bg-accent text-accent-ink shadow-[0_2px_0_color-mix(in_srgb,var(--accent)_60%,black)] hover:brightness-110 active:shadow-none",
-    variant === "secondary" && "border border-line-strong bg-surface text-ink shadow-[0_2px_0_var(--line)] hover:bg-surface-2 active:shadow-none",
+      "bg-accent text-accent-ink hover:bg-[color-mix(in_srgb,var(--accent)_88%,black)]",
+    variant === "secondary" && "border border-line-strong bg-surface text-ink hover:bg-surface-2",
     variant === "ghost" && "text-ink-2 hover:bg-surface-2",
-    variant === "danger" && "border border-line-strong bg-surface text-danger shadow-[0_2px_0_var(--line)] hover:bg-danger-soft active:shadow-none",
+    variant === "danger" && "border border-line-strong bg-surface text-danger hover:bg-danger-soft",
     extra,
   );
 }
@@ -36,10 +36,8 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: st
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        {eyebrow && <p className="mb-1 font-hand text-2xl leading-none text-accent">{eyebrow}</p>}
-        <h1 className="text-[28px] font-extrabold tracking-tight text-ink">
-          <span className="highlight">{title}</span>
-        </h1>
+        {eyebrow && <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-accent">{eyebrow}</p>}
+        <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-ink">{title}</h1>
         {description && <p className="mt-2 max-w-2xl text-[15px] text-muted">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -115,7 +113,7 @@ export function EmptyState({ icon, title, children }: { icon?: ReactNode; title:
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line-strong bg-surface/60 px-6 py-16 text-center">
       {icon && <div className="mb-3 text-muted">{icon}</div>}
-      <p className="font-hand text-3xl text-ink">{title}</p>
+      <p className="text-lg font-extrabold text-ink">{title}</p>
       {children && <div className="mt-1 max-w-md text-sm text-muted">{children}</div>}
     </div>
   );

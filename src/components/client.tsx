@@ -61,13 +61,13 @@ export function Modal({
         if (e.target === ref.current) onClose();
       }}
       className={cx(
-        "m-auto w-[calc(100%-2rem)] overflow-hidden rounded-3xl border-2 border-line bg-surface p-0 text-ink shadow-2xl",
+        "m-auto w-[calc(100%-2rem)] overflow-hidden rounded-2xl border border-line-strong bg-surface p-0 text-ink shadow-2xl",
         size === "md" ? "max-w-md" : "max-w-xl",
       )}
     >
       {open && (
         <div className="relative p-6 pt-7">
-          <div aria-hidden className="absolute inset-x-0 top-0 h-1.5" style={{ background: color ?? "var(--accent)" }} />
+          <div aria-hidden className="absolute inset-x-0 top-0 h-1" style={{ background: color ?? "var(--accent)" }} />
           <div className="mb-5 flex items-start justify-between gap-4">
             <h2 className="text-xl font-extrabold leading-snug tracking-tight">{title}</h2>
             <button type="button" onClick={onClose} className="-m-1.5 rounded-lg p-1.5 text-muted hover:bg-surface-2" aria-label="Fermer">

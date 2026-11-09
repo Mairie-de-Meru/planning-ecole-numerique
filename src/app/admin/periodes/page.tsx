@@ -48,7 +48,6 @@ export default async function PeriodsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Le calendrier"
         title="Périodes de réservation"
         description={
           <>
@@ -114,7 +113,7 @@ export default async function PeriodsPage() {
         <div className="space-y-8">
           {years.map((y) => (
             <section key={y}>
-              <h2 className="mb-3 font-hand text-3xl leading-none text-accent">Année {y}</h2>
+              <h2 className="mb-3 text-sm font-extrabold uppercase tracking-wider text-muted">Année {y}</h2>
               <div className="space-y-2">
                 {periods
                   .filter((p) => p.schoolYear === y)

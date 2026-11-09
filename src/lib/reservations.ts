@@ -64,8 +64,8 @@ async function checkLimit(tx: Parameters<Parameters<typeof db.transaction>[0]>[0
   if (n >= max)
     throw new BookingError(
       max === 1
-        ? "Votre école a déjà une valise réservée sur cette période."
-        : `Votre école a déjà ${n} valises réservées sur cette période (maximum ${max}).`,
+        ? "Votre école a déjà une mallette réservée sur cette période."
+        : `Votre école a déjà ${n} mallettes réservées sur cette période (maximum ${max}).`,
     );
 }
 
@@ -85,7 +85,7 @@ export async function bookReservation(input: { schoolId: string; itemId: string;
       // Sérialise les réservations d'une même école (contrôle du plafond).
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${input.schoolId}))`);
       const [item] = await tx.select().from(schema.items).where(eq(schema.items.id, input.itemId));
-      if (!item || !item.active) throw new BookingError("Cette valise n'est plus proposée.");
+      if (!item || !item.active) throw new BookingError("Cette mallette n'est plus proposée.");
       const [period] = await tx.select().from(schema.periods).where(eq(schema.periods.id, input.periodId));
       if (!period) throw new BookingError("Période introuvable.");
       if (period.endDate < today) throw new BookingError("Cette période est terminée.");
@@ -104,7 +104,7 @@ export async function bookReservation(input: { schoolId: string; itemId: string;
       return r;
     });
   } catch (e) {
-    if (isUniqueViolation(e)) throw new BookingError("Trop tard : cette valise vient d'être réservée pour cette période par une autre école.");
+    if (isUniqueViolation(e)) throw new BookingError("Trop tard : cette mallette vient d'être réservée pour cette période par une autre école.");
     throw e;
   }
 
@@ -115,8 +115,8 @@ export async function bookReservation(input: { schoolId: string; itemId: string;
     title: "Confirmez votre réservation",
     blocks: [
       { kind: "p", text: `Bonjour, vous avez demandé à réserver « ${full.item.name} ». Pour valider la réservation, cliquez sur le bouton ci-dessous.` },
-      { kind: "facts", rows: [["Valise", full.item.name], ...periodFacts(full.period), ["École", full.school.name]] },
-      { kind: "note", text: `Sans confirmation dans les ${settings.confirmTtlMinutes} minutes, la valise sera de nouveau proposée aux autres écoles.` },
+      { kind: "facts", rows: [["Mallette", full.item.name], ...periodFacts(full.period), ["École", full.school.name]] },
+      { kind: "note", text: `Sans confirmation dans les ${settings.confirmTtlMinutes} minutes, la mallette sera de nouveau proposée aux autres écoles.` },
     ],
     button: { label: "Confirmer la réservation", url },
   });
@@ -145,7 +145,7 @@ export async function confirmReservation(token: string) {
   if (full.r.status !== "pending") throw new BookingError("Cette réservation n'est plus en attente de confirmation.");
   if (full.r.expiresAt && full.r.expiresAt < new Date()) {
     await expireStalePending();
-    throw new BookingError("Le délai de confirmation est dépassé : la valise a été remise à disposition. Vous pouvez la réserver de nouveau si elle est libre.");
+    throw new BookingError("Le délai de confirmation est dépassé : la mallette a été remise à disposition. Vous pouvez la réserver de nouveau si elle est libre.");
   }
   const [r] = await db
     .update(schema.reservations)
@@ -171,8 +171,8 @@ async function notifyConfirmed(item: Item, period: Period, school: School, reser
           ? `Le gestionnaire a réservé « ${item.name} » pour votre école.`
           : `C'est confirmé : « ${item.name} » est réservée pour votre école.`,
       },
-      { kind: "facts", rows: [["Valise", item.name], ...periodFacts(period), ["Livraison", school.address || "—"]] },
-      { kind: "p", text: "La valise sera livrée à l'adresse ci-dessus en début de période. Vous pouvez décaler ou annuler la réservation depuis « Mes réservations »." },
+      { kind: "facts", rows: [["Mallette", item.name], ...periodFacts(period), ["Livraison", school.address || "—"]] },
+      { kind: "p", text: "La mallette sera livrée à l'adresse ci-dessus en début de période. Vous pouvez décaler ou annuler la réservation depuis « Mes réservations »." },
     ],
     button: { label: "Voir mes réservations", url: `${appUrl()}/reservations` },
   });
@@ -183,8 +183,8 @@ async function notifyConfirmed(item: Item, period: Period, school: School, reser
     text,
     attachments: [
       icsEvent({
-        uid: `${reservationId}@valises`,
-        title: `Valise : ${item.name}`,
+        uid: `${reservationId}@mallettes`,
+        title: `Mallette : ${item.name}`,
         description: `${period.label} — ${settings.appName}`,
         start: period.startDate,
         end: period.endDate,
@@ -193,7 +193,7 @@ async function notifyConfirmed(item: Item, period: Period, school: School, reser
   }).catch((e) => console.error("mail", e));
   await notifyAdmins(`Nouvelle réservation : ${item.name}`, [
     ["École", school.name || school.email],
-    ["Valise", item.name],
+    ["Mallette", item.name],
     ...periodFacts(period),
     ["Livraison", school.address || "—"],
   ]);
@@ -264,8 +264,8 @@ export async function moveReservation(input: { reservationId: string; periodId: 
       title: "Votre réservation a été décalée",
       blocks: [
         { kind: "p", text: actor.type === "admin" ? "Le gestionnaire a modifié votre réservation." : "Votre réservation a bien été décalée." },
-        { kind: "facts", rows: [["Valise", after.item.name], ...periodFacts(after.period)] },
-        { kind: "note", text: `Ancienne période : ${before.period.label} (${before.period.schoolYear})${before.item.id !== after.item.id ? ` — ancienne valise : ${before.item.name}` : ""}.` },
+        { kind: "facts", rows: [["Mallette", after.item.name], ...periodFacts(after.period)] },
+        { kind: "note", text: `Ancienne période : ${before.period.label} (${before.period.schoolYear})${before.item.id !== after.item.id ? ` — ancienne mallette : ${before.item.name}` : ""}.` },
       ],
       button: { label: "Voir mes réservations", url: `${appUrl()}/reservations` },
     });
@@ -275,13 +275,13 @@ export async function moveReservation(input: { reservationId: string; periodId: 
       html,
       text,
       attachments: [
-        icsEvent({ uid: `${after.r.id}@valises`, title: `Valise : ${after.item.name}`, description: after.period.label, start: after.period.startDate, end: after.period.endDate }),
+        icsEvent({ uid: `${after.r.id}@mallettes`, title: `Mallette : ${after.item.name}`, description: after.period.label, start: after.period.startDate, end: after.period.endDate }),
       ],
     }).catch((e) => console.error("mail", e));
     if (actor.type === "school")
       await notifyAdmins(`Réservation décalée : ${after.item.name}`, [
         ["École", after.school.name || after.school.email],
-        ["Valise", after.item.name],
+        ["Mallette", after.item.name],
         ["Avant", `${before.period.label} (${before.period.schoolYear})`],
         ["Après", `${after.period.label} (${after.period.schoolYear})`],
       ]);
@@ -312,14 +312,14 @@ export async function cancelReservation(input: { reservationId: string; actor: A
       title: "Réservation annulée",
       blocks: [
         { kind: "p", text: actor.type === "admin" ? "Le gestionnaire a annulé la réservation suivante." : "Votre réservation a bien été annulée." },
-        { kind: "facts", rows: [["Valise", full.item.name], ...periodFacts(full.period)] },
+        { kind: "facts", rows: [["Mallette", full.item.name], ...periodFacts(full.period)] },
       ],
     });
     await sendMail({ to: full.school.email, subject: `Réservation annulée : ${full.item.name}`, html, text }).catch((e) => console.error("mail", e));
     if (actor.type === "school")
       await notifyAdmins(`Réservation annulée : ${full.item.name}`, [
         ["École", full.school.name || full.school.email],
-        ["Valise", full.item.name],
+        ["Mallette", full.item.name],
         ...periodFacts(full.period),
       ]);
   }
@@ -340,7 +340,7 @@ export async function resendConfirmation(input: { reservationId: string; schoolI
   const { html, text } = renderMail({
     appName: settings.appName,
     title: "Confirmez votre réservation",
-    blocks: [{ kind: "facts", rows: [["Valise", full.item.name], ...periodFacts(full.period)] }],
+    blocks: [{ kind: "facts", rows: [["Mallette", full.item.name], ...periodFacts(full.period)] }],
     button: { label: "Confirmer la réservation", url },
   });
   await sendMail({ to: full.school.email, subject: `À confirmer : ${full.item.name} — ${full.period.label}`, html, text });
@@ -357,7 +357,7 @@ export async function adminCreateReservation(input: { schoolId: string; itemId: 
       .values({ itemId: input.itemId, periodId: input.periodId, schoolId: input.schoolId, status: "confirmed", confirmedAt: new Date() })
       .returning();
   } catch (e) {
-    if (isUniqueViolation(e)) throw new BookingError("Cette valise est déjà réservée sur cette période.");
+    if (isUniqueViolation(e)) throw new BookingError("Cette mallette est déjà réservée sur cette période.");
     throw e;
   }
   await audit({ type: "admin", email: input.adminEmail }, "réservation créée par l'admin", r.id);
@@ -368,7 +368,7 @@ export async function adminCreateReservation(input: { schoolId: string; itemId: 
     title: "Votre réservation est faite",
     blocks: [
       { kind: "p", text: `Le gestionnaire a réservé « ${full.item.name} » pour votre école.` },
-      { kind: "facts", rows: [["Valise", full.item.name], ...periodFacts(full.period), ["Livraison", full.school.address || "—"]] },
+      { kind: "facts", rows: [["Mallette", full.item.name], ...periodFacts(full.period), ["Livraison", full.school.address || "—"]] },
     ],
     button: { label: "Voir mes réservations", url: `${appUrl()}/reservations` },
   });
@@ -377,7 +377,7 @@ export async function adminCreateReservation(input: { schoolId: string; itemId: 
     subject: `Réservation confirmée : ${full.item.name} — ${full.period.label}`,
     html,
     text,
-    attachments: [icsEvent({ uid: `${r.id}@valises`, title: `Valise : ${full.item.name}`, description: full.period.label, start: full.period.startDate, end: full.period.endDate })],
+    attachments: [icsEvent({ uid: `${r.id}@mallettes`, title: `Mallette : ${full.item.name}`, description: full.period.label, start: full.period.startDate, end: full.period.endDate })],
   }).catch((e) => console.error("mail", e));
   return r;
 }

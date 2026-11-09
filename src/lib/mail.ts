@@ -123,7 +123,7 @@ export function icsEvent(opts: { uid: string; title: string; description: string
   const content = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Reservation valises//FR",
+    "PRODID:-//Reservation mallettes//FR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

@@ -17,8 +17,7 @@ export function ConfirmForm({ token, children }: { token: string; children: Reac
         <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-ok-soft text-ok">
           <CircleCheck className="size-6" />
         </div>
-        <p className="font-hand text-4xl leading-none text-ok">C&apos;est réservé !</p>
-        <h1 className="mt-2 text-xl font-extrabold tracking-tight">Réservation confirmée</h1>
+        <h1 className=" text-xl font-extrabold tracking-tight">Réservation confirmée</h1>
         <p className="mt-2 text-[15px] text-muted">
           « {item} » est réservée pour la période {label}, du {frLong(start)} au {frLong(end)}. Un e-mail récapitulatif vous a été envoyé.
         </p>

@@ -12,7 +12,7 @@ export function AppHeader({ user, appName, section }: { user: CurrentUser; appNa
       ? [
           { href: "/admin", label: "Planning" },
           { href: "/admin/livraisons", label: "Livraisons" },
-          { href: "/admin/valises", label: "Valises" },
+          { href: "/admin/mallettes", label: "Mallettes" },
           { href: "/admin/periodes", label: "Périodes" },
           { href: "/admin/ecoles", label: "Écoles" },
           { href: "/admin/emails", label: "E-mails" },
@@ -20,6 +20,7 @@ export function AppHeader({ user, appName, section }: { user: CurrentUser; appNa
         ]
       : [
           { href: "/", label: "Planning" },
+          { href: "/mallettes", label: "Les mallettes" },
           { href: "/reservations", label: "Mes réservations" },
           { href: "/mon-ecole", label: "Mon école" },
         ];
@@ -30,7 +31,7 @@ export function AppHeader({ user, appName, section }: { user: CurrentUser; appNa
           Mode test : les e-mails ne sont pas envoyés, les liens s&apos;affichent à l&apos;écran.
         </div>
       )}
-      <header className="no-print sticky top-0 z-20 border-b-2 border-line bg-surface/90 backdrop-blur">
+      <header className="no-print sticky top-0 z-20 border-b border-line-strong bg-surface/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-8 sm:px-6">
           <div className="flex items-center justify-between gap-4">
             <Link href={section === "admin" ? "/admin" : "/"} className="shrink-0">

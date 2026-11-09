@@ -104,7 +104,7 @@ describe("premier réservé, premier servi", () => {
   it("plafond par école et par période (réglage admin)", async () => {
     await updateSettings({ maxPerSchoolPerPeriod: 1 });
     await bookReservation({ schoolId: schoolA, itemId, periodId: p1, actorEmail: "a@ecole.fr" });
-    await expect(bookReservation({ schoolId: schoolA, itemId: item2, periodId: p1, actorEmail: "a@ecole.fr" })).rejects.toThrow(/déjà une valise/);
+    await expect(bookReservation({ schoolId: schoolA, itemId: item2, periodId: p1, actorEmail: "a@ecole.fr" })).rejects.toThrow(/déjà une mallette/);
     await bookReservation({ schoolId: schoolA, itemId: item2, periodId: p2, actorEmail: "a@ecole.fr" });
   });
 });

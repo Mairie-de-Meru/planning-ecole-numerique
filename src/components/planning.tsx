@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Clock, Loader2, MailCheck, MapPin, Plus } from "lucide-react";
 import { Modal } from "./client";
+import { Thumb } from "./thumb";
 import { Alert, Badge, Button, Select, cx } from "./ui";
 import { frLong, frRange } from "@/lib/dates";
 import {
@@ -25,7 +26,7 @@ export type GridPeriod = {
   endDate: string;
   state: "past" | "current" | "upcoming";
 };
-export type GridItem = { id: string; name: string; description: string; contents: string; active: boolean; color: string };
+export type GridItem = { id: string; name: string; description: string; contents: string; active: boolean; color: string; photoUrl: string | null };
 export type GridSlot = { reservationId: string; status: "pending" | "confirmed"; mine: boolean; schoolName?: string; schoolId?: string };
 
 type Props = {
@@ -86,7 +87,7 @@ function buildTimeline(periods: GridPeriod[], today: string) {
   return { segments, months, todayPct };
 }
 
-const LABEL_W = "15rem";
+const LABEL_W = "17rem";
 
 export function Planning(props: Props) {
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -107,7 +108,7 @@ export function Planning(props: Props) {
   return (
     <>
       {/* Grand écran : frise de l'année scolaire */}
-      <div className="hidden overflow-x-auto rounded-3xl border-2 border-line bg-surface shadow-card md:block">
+      <div className="hidden overflow-x-auto rounded-2xl border border-line-strong bg-surface shadow-card md:block">
         <div className="relative min-w-[60rem]">
           {/* Mois */}
           <div className="grid border-b border-line" style={{ gridTemplateColumns: `${LABEL_W} 1fr` }}>
@@ -128,10 +129,10 @@ export function Planning(props: Props) {
           <div className="relative">
             {/* En-tête des périodes */}
             <div className="grid" style={{ gridTemplateColumns: columns }}>
-              <div className="flex items-end border-b-2 border-line px-5 pb-3 pt-4 text-xs font-bold uppercase tracking-wider text-muted">Valises</div>
+              <div className="flex items-end border-b border-line-strong px-5 pb-3 pt-4 text-xs font-bold uppercase tracking-wider text-muted">Mallettes</div>
               {segments.map((s, i) =>
                 s.kind === "holiday" ? (
-                  <div key={i} className="hatch flex items-end justify-center border-b-2 border-line pb-2 opacity-70">
+                  <div key={i} className="hatch flex items-end justify-center border-b border-line-strong pb-2 opacity-70">
                     <span className="max-h-24 truncate text-[10px] font-bold uppercase tracking-wider text-muted [writing-mode:vertical-rl] rotate-180" title={`Vacances : ${s.name}`}>
                       {s.name}
                     </span>
@@ -141,8 +142,8 @@ export function Planning(props: Props) {
                     key={i}
                     title={s.period.label}
                     className={cx(
-                      "relative z-[1] flex min-w-0 flex-col justify-end border-b-2 px-2.5 pb-3 pt-3",
-                      s.period.state === "current" ? "border-accent bg-accent-soft/60" : "border-line",
+                      "relative z-[1] flex min-w-0 flex-col justify-end border-b px-2.5 pb-3 pt-3",
+                      s.period.state === "current" ? "border-b-2 border-accent bg-accent-soft/60" : "border-line-strong",
                       s.period.state === "past" && "opacity-45",
                     )}
                   >
@@ -154,11 +155,12 @@ export function Planning(props: Props) {
               )}
             </div>
 
-            {/* Lignes des valises */}
+            {/* Lignes des mallettes */}
             {items.map((item, r) => (
               <div key={item.id} className="crayon grid" style={{ gridTemplateColumns: columns, ["--c" as string]: item.color }}>
-                <div className={cx("flex min-w-0 items-center gap-3 px-5 py-2.5", r < items.length - 1 && "border-b border-line")}>
-                  <span className="h-9 w-1.5 shrink-0 rounded-full bg-[var(--c)]" />
+                <div className={cx("relative flex min-w-0 items-center gap-3 py-2 pl-5 pr-3", r < items.length - 1 && "border-b border-line")}>
+                  <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[var(--c)]" />
+                  <Thumb src={item.photoUrl} color={item.color} alt="" className="size-12" />
                   <div className="min-w-0">
                     <div className="truncate text-[15px] font-bold text-ink">
                       {item.name} {!item.active && <Badge className="ml-1">masquée</Badge>}
@@ -193,13 +195,16 @@ export function Planning(props: Props) {
         </div>
       </div>
 
-      {/* Mobile : une fiche par valise */}
+      {/* Mobile : une fiche par mallette */}
       <div className="space-y-4 md:hidden">
         {items.map((item) => (
-          <div key={item.id} className="crayon overflow-hidden rounded-2xl border-2 border-line bg-surface shadow-card" style={{ ["--c" as string]: item.color }}>
-            <div className="border-b border-line bg-[var(--c-soft)] px-4 py-3">
-              <div className="font-extrabold text-[var(--c-ink)]">{item.name}</div>
-              {item.description && <div className="text-[13px] font-semibold text-muted">{item.description}</div>}
+          <div key={item.id} className="crayon overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-card" style={{ ["--c" as string]: item.color }}>
+            <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+              <Thumb src={item.photoUrl} color={item.color} alt="" className="size-14" />
+              <div className="min-w-0">
+                <div className="font-extrabold">{item.name}</div>
+                {item.description && <div className="text-[13px] font-semibold text-muted">{item.description}</div>}
+              </div>
             </div>
             <ul className="divide-y divide-line px-4">
               {periods.map((p) => (
@@ -256,7 +261,7 @@ function Cell({ mode, period, slot, onClick, label }: { mode: Props["mode"]; per
       tone = "hatch justify-center bg-surface-2 text-muted";
       content = <span className="truncate">Réservée</span>;
     } else if (pending) {
-      tone = "border-2 border-dashed border-[var(--c)] bg-[var(--c-soft)] text-[var(--c-ink)]";
+      tone = "border border-dashed border-[var(--c)] bg-[var(--c-soft)] text-[var(--c-ink)]";
       content = (
         <>
           <Clock className="size-3.5 shrink-0" />
@@ -267,7 +272,7 @@ function Cell({ mode, period, slot, onClick, label }: { mode: Props["mode"]; per
       tone = "!justify-start border-l-4 border-[var(--c)] bg-[var(--c-soft)] text-[var(--c-ink)]";
       content = <span className="truncate">{slot.schoolName}</span>;
     } else {
-      tone = "border-2 border-[var(--c)] bg-[var(--c-mid)] text-[var(--c-ink)] shadow-[0_2px_0_var(--c)]";
+      tone = "border border-[var(--c)] bg-[var(--c-mid)] text-[var(--c-ink)]";
       content = (
         <>
           <Check className="size-4 shrink-0" strokeWidth={3} />
@@ -276,7 +281,7 @@ function Cell({ mode, period, slot, onClick, label }: { mode: Props["mode"]; per
       );
     }
     return clickable ? (
-      <button type="button" onClick={onClick} className={cx(base, tone, "hover:-translate-y-px hover:brightness-[0.97]")} aria-label={`${label} : gérer`} title={slot.schoolName}>
+      <button type="button" onClick={onClick} className={cx(base, tone, "hover:brightness-[0.96]")} aria-label={`${label} : gérer`} title={slot.schoolName}>
         {content}
       </button>
     ) : (
@@ -293,7 +298,7 @@ function Cell({ mode, period, slot, onClick, label }: { mode: Props["mode"]; per
       aria-label={`${label} : libre, ${mode === "admin" ? "attribuer" : "réserver"}`}
       className={cx(
         base,
-        "group justify-center border-2 border-dashed border-line text-muted/80 hover:border-[var(--c)] hover:bg-[var(--c-soft)] hover:text-[var(--c-ink)]",
+        "group justify-center border border-dashed border-line-strong text-muted/80 hover:border-solid hover:border-[var(--c)] hover:bg-[var(--c-soft)] hover:text-[var(--c-ink)]",
       )}
     >
       <span className="truncate group-hover:hidden">Libre</span>
@@ -309,17 +314,17 @@ function Legend({ mode }: { mode: Props["mode"] }) {
   const c = { ["--c" as string]: "var(--accent)" };
   return (
     <div className="crayon mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold text-muted" style={c}>
-      <span className="inline-flex items-center gap-2"><span className={cx(sw, "border-2 border-dashed border-line-strong")} /> Libre</span>
+      <span className="inline-flex items-center gap-2"><span className={cx(sw, "border border-dashed border-line-strong")} /> Libre</span>
       {mode === "school" ? (
         <>
-          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border-2 border-[var(--c)] bg-[var(--c-mid)]")} /> Réservée par vous</span>
-          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border-2 border-dashed border-[var(--c)] bg-[var(--c-soft)]")} /> À confirmer par e-mail</span>
+          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border border-[var(--c)] bg-[var(--c-mid)]")} /> Réservée par vous</span>
+          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border border-dashed border-[var(--c)] bg-[var(--c-soft)]")} /> À confirmer par e-mail</span>
           <span className="inline-flex items-center gap-2"><span className={cx(sw, "hatch bg-surface-2")} /> Réservée par une autre école</span>
         </>
       ) : (
         <>
           <span className="inline-flex items-center gap-2"><span className={cx(sw, "border-l-4 border-[var(--c)] bg-[var(--c-soft)]")} /> Confirmée</span>
-          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border-2 border-dashed border-[var(--c)] bg-[var(--c-soft)]")} /> En attente de confirmation</span>
+          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border border-dashed border-[var(--c)] bg-[var(--c-soft)]")} /> En attente de confirmation</span>
         </>
       )}
       <span className="inline-flex items-center gap-2"><span className="relative h-3.5 w-0.5 rounded bg-margin"><span className="absolute -left-[3px] -top-1 size-2 rounded-full bg-margin" /></span> Aujourd&apos;hui</span>
@@ -369,10 +374,9 @@ function BookDialog({ item, period, school, onDone }: { item: GridItem; period: 
         <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-accent-soft text-accent">
           <MailCheck className="size-6" />
         </div>
-        <p className="font-hand text-3xl leading-none text-accent">Presque fini !</p>
-        <p className="mt-2 font-extrabold">Confirmez votre réservation par e-mail</p>
+        <p className="font-extrabold">Confirmez votre réservation par e-mail</p>
         <p className="mt-2 text-sm text-muted">
-          Un lien de confirmation a été envoyé à <span className="font-semibold text-ink">{result.message}</span>. La valise vous est réservée en attendant.
+          Un lien de confirmation a été envoyé à <span className="font-semibold text-ink">{result.message}</span>. La mallette vous est réservée en attendant.
         </p>
         {result.link && (
           <Alert tone="warn" className="mt-4 text-left">
@@ -389,7 +393,13 @@ function BookDialog({ item, period, school, onDone }: { item: GridItem; period: 
     );
   return (
     <div className="space-y-5">
-      {item.contents && <p className="text-sm text-muted">{item.contents}</p>}
+      <div className="flex gap-4">
+        <Thumb src={item.photoUrl} color={item.color} alt={item.name} className="size-24" />
+        <div className="min-w-0">
+          {item.description && <p className="font-bold text-ink">{item.description}</p>}
+          {item.contents && <p className="mt-1 text-sm text-muted">{item.contents}</p>}
+        </div>
+      </div>
       <Facts
         rows={[
           ...periodRows(period),
@@ -412,7 +422,7 @@ function BookDialog({ item, period, school, onDone }: { item: GridItem; period: 
           Annuler
         </Button>
         <Button disabled={pending} onClick={() => run(() => bookAction(item.id, period.id))}>
-          {pending && <Loader2 className="size-4 animate-spin" />} Réserver cette valise
+          {pending && <Loader2 className="size-4 animate-spin" />} Réserver cette mallette
         </Button>
       </div>
       <p className="text-center text-xs text-muted">Vous recevrez un e-mail pour confirmer la réservation.</p>
@@ -489,7 +499,7 @@ function ManageDialog({ mode, item, period, slot, items, onDone }: { mode: Props
         </p>
         {mode === "admin" && (
           <div className="space-y-1.5">
-            <label htmlFor="titem" className="text-sm font-semibold">Valise</label>
+            <label htmlFor="titem" className="text-sm font-semibold">Mallette</label>
             <Select id="titem" value={targetItem} onChange={(e) => { setTargetItem(e.target.value); setTarget(""); }}>
               {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
             </Select>
@@ -566,7 +576,7 @@ function ManageDialog({ mode, item, period, slot, items, onDone }: { mode: Props
             variant="danger"
             disabled={pending}
             onClick={() => {
-              if (confirm("Annuler cette réservation ? La valise sera remise à disposition des autres écoles."))
+              if (confirm("Annuler cette réservation ? La mallette sera remise à disposition des autres écoles."))
                 run(() => (mode === "admin" ? adminCancelAction(slot.reservationId) : cancelAction(slot.reservationId)));
             }}
           >

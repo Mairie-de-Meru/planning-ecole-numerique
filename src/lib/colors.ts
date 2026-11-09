@@ -1,4 +1,4 @@
-/** Couleurs « crayons » attribuées aux valises. */
+/** Couleurs « crayons » attribuées aux mallettes. */
 export const CRAYONS = [
   { key: "encre", label: "Bleu encre", hex: "#3563d9" },
   { key: "tomate", label: "Tomate", hex: "#e4572e" },

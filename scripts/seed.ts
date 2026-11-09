@@ -1,5 +1,5 @@
 /**
- * Données de démonstration : valises, périodes zone B, liste blanche et écoles fictives.
+ * Données de démonstration : mallettes, périodes zone B, liste blanche et écoles fictives.
  * Usage : npm run db:seed
  * Les dates 2026-2027 sont saisies à la main (à vérifier) : utilisez « Lire les dates maintenant »
  * dans Admin → Périodes pour les remplacer par celles de service-public.gouv.fr.
@@ -11,17 +11,37 @@ async function main() {
   const sql = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
   await sql`insert into settings (id) values (1) on conflict do nothing`;
 
-  const items = [
-    ["Valise tablettes n°1", "16 tablettes · cycles 2 et 3", "16 tablettes 10 pouces, coques renforcées, chargeur multiple, guide d'utilisation."],
-    ["Valise tablettes n°2", "16 tablettes · cycles 2 et 3", "16 tablettes 10 pouces, coques renforcées, chargeur multiple, guide d'utilisation."],
-    ["Robots programmables", "6 robots · cycle 2", "6 robots de sol, cartes de programmation, tapis quadrillés, fiches activités."],
-    ["Kit sciences – électricité", "Cycle 3", "Piles, ampoules, fils, interrupteurs, moteurs, fiches d'expériences."],
-    ["Valise lecture CP", "Albums et jeux de lecture", "30 albums jeunesse, jeux de syllabes, étiquettes-mots."],
+  const items: [string, string, string, string | null][] = [
+    [
+      "Mallette tablettes",
+      "16 tablettes et leur chariot de recharge",
+      "16 tablettes 10 pouces avec coques, chariot mobile de rangement et de recharge sécurisé, guide d'utilisation.",
+      "/mallettes/tablettes.webp",
+    ],
+    [
+      "Robots de sol",
+      "6 robots programmables · cycles 1 et 2",
+      "6 robots transparents programmables par boutons, station de recharge, tapis quadrillés, fiches défis.",
+      "/mallettes/robots.webp",
+    ],
+    [
+      "Programmation tactile",
+      "Coder sans écran avec des cartes",
+      "2 lecteurs de cartes et 120 cartes (flèches, pause, répétition), à utiliser avec les robots de sol.",
+      "/mallettes/programmation.webp",
+    ],
+    [
+      "Solides géométriques",
+      "Cartes et solides · cycles 2 et 3",
+      "25 grandes cartes illustrées (cubes, pavés, prismes, cylindres, cônes, sphères) et solides à manipuler.",
+      "/mallettes/solides.webp",
+    ],
+    ["Mallette lecture CP", "Albums et jeux de lecture", "30 albums jeunesse, jeux de syllabes, étiquettes-mots.", null],
   ];
   let order = 0;
-  for (const [name, description, contents] of items) {
-    await sql`insert into items (name, description, contents, sort_order)
-              select ${name}, ${description}, ${contents}, ${order++}
+  for (const [name, description, contents, photo] of items) {
+    await sql`insert into items (name, description, contents, photo_url, sort_order)
+              select ${name}, ${description}, ${contents}, ${photo}, ${order++}
               where not exists (select 1 from items where name = ${name})`;
   }
 
@@ -58,7 +78,7 @@ async function main() {
   await sql`insert into reservations (item_id, period_id, school_id, status, confirmed_at)
             select i.id, p.id, s.id, 'confirmed', now()
             from items i, periods p, schools s
-            where i.name = 'Robots programmables' and p.school_year = '2026-2027' and p.position = 3
+            where i.name = 'Robots de sol' and p.school_year = '2026-2027' and p.position = 3
               and s.email = 'les-tilleuls@ecole-demo.fr'
             on conflict do nothing`;
 

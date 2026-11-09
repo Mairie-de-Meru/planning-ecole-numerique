@@ -31,7 +31,7 @@ export default async function SchoolsPage() {
   const schools = await db.select().from(schema.schools).orderBy(asc(schema.schools.name));
   return (
     <>
-      <PageHeader eyebrow="Les écoles" title="Écoles et accès" description="Seules les adresses de la liste blanche peuvent se connecter. Les écoles créent leur fiche à la première connexion." />
+      <PageHeader title="Écoles et accès" description="Seules les adresses de la liste blanche peuvent se connecter. Les écoles créent leur fiche à la première connexion." />
 
       <section className="mb-12">
         <h2 className="mb-3 font-semibold">Liste blanche</h2>

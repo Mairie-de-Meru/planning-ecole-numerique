@@ -18,7 +18,7 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
       <div className="text-center">
           {email ? (
             <>
-              <p className="font-hand text-5xl leading-none text-accent">Bienvenue !</p>
+              <h1 className="text-xl font-extrabold tracking-tight">Bienvenue</h1>
               <p className="mt-2 text-[15px] text-muted">
                 Connexion en tant que <span className="font-semibold text-ink">{email}</span>
               </p>

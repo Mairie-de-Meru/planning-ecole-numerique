@@ -17,7 +17,7 @@ export function NavLinks({ links, exactRoots = ["/", "/admin"] }: { links: { hre
             aria-current={active ? "page" : undefined}
             className={cx(
               "relative shrink-0 rounded-lg px-3 py-1.5 text-sm font-bold transition-colors",
-              active ? "bg-highlight text-ink" : "text-muted hover:bg-surface-2 hover:text-ink",
+              active ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-2 hover:text-ink",
             )}
           >
             {l.label}

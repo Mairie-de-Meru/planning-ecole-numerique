@@ -5,6 +5,7 @@ import { schoolReservations } from "@/lib/reservations";
 import { frLong, periodState } from "@/lib/dates";
 import { Badge, EmptyState, LinkButton, PageHeader, cx } from "@/components/ui";
 import { itemColors } from "@/lib/planning-data";
+import { Thumb } from "@/components/thumb";
 
 export const metadata = { title: "Mes réservations" };
 
@@ -24,14 +25,13 @@ export default async function MyReservations() {
   return (
     <>
       <PageHeader
-        eyebrow="Le cartable de l'école"
         title="Mes réservations"
         description="Pour décaler ou annuler une réservation à venir, cliquez dessus dans le planning."
         actions={<LinkButton href="/">Ouvrir le planning</LinkButton>}
       />
       {!rows.length ? (
         <EmptyState icon={<CalendarCheck className="size-8" />} title="Aucune réservation pour le moment">
-          Rendez-vous sur le planning pour réserver une valise.
+          Rendez-vous sur le planning pour réserver une mallette.
         </EmptyState>
       ) : (
         <div className="space-y-10">
@@ -44,18 +44,19 @@ export default async function MyReservations() {
           ).map(([k, title]) =>
             groups[k].length ? (
               <section key={k}>
-                <h2 className="mb-3 font-hand text-3xl leading-none text-accent">{title}</h2>
+                <h2 className="mb-3 text-sm font-extrabold uppercase tracking-wider text-muted">{title}</h2>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {groups[k].map(({ r, item, period }) => (
                     <article
                       key={r.id}
-                      className={cx("crayon overflow-hidden rounded-2xl border-2 border-line bg-surface shadow-card", k === "past" && "opacity-60")}
+                      className={cx("crayon overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-card", k === "past" && "opacity-60")}
                       style={{ ["--c" as string]: colors.get(item.id) }}
                     >
-                      <div className="h-2 bg-[var(--c)]" />
+                      <div className="h-1 bg-[var(--c)]" />
                       <div className="p-5">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="text-lg font-extrabold leading-tight">{item.name}</div>
+                        <div className="flex items-start gap-3">
+                          <Thumb src={item.photoUrl} color={colors.get(item.id) ?? "#3563d9"} alt="" className="size-14" />
+                          <div className="min-w-0 flex-1 pt-1 text-lg font-extrabold leading-tight">{item.name}</div>
                           {r.status === "pending" ? (
                             <Badge tone="warn"><Clock className="size-3" /> À confirmer</Badge>
                           ) : (

@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    // envoi des photos de mallettes depuis l'admin
+    serverActions: { bodySizeLimit: "4mb" },
+  },
 };
 
 export default nextConfig;

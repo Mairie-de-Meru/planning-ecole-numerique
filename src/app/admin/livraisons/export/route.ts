@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   const rows = await deliveries(id);
   const cell = (v: string) => `"${v.replace(/"/g, '""').replace(/\r?\n/g, ", ")}"`;
   const lines = [
-    ["École", "Adresse", "Contact", "Téléphone", "E-mail", "Valise", "Début", "Fin"].map(cell).join(";"),
+    ["École", "Adresse", "Contact", "Téléphone", "E-mail", "Mallette", "Début", "Fin"].map(cell).join(";"),
     ...rows.map(({ item, school }) =>
       [school.name, school.address, school.contactName, school.phone, school.email, item.name, period.startDate, period.endDate].map(cell).join(";"),
     ),

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  customType,
   boolean,
   date,
   integer,
@@ -33,7 +34,7 @@ export const settings = pgTable("settings", {
   confirmTtlMinutes: integer("confirm_ttl_minutes").notNull().default(30),
   maxPerSchoolPerPeriod: integer("max_per_school_per_period").notNull().default(0),
   notifyAdmin: boolean("notify_admin").notNull().default(true),
-  appName: text("app_name").notNull().default("Valises pédagogiques"),
+  appName: text("app_name").notNull().default("Mallettes pédagogiques"),
   lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
   lastSyncStatus: text("last_sync_status"),
 });
@@ -120,7 +121,7 @@ export const reservations = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    // Premier réservé, premier servi : une seule réservation active par valise et par période.
+    // Premier réservé, premier servi : une seule réservation active par mallette et par période.
     uniqueIndex("one_booking_per_slot")
       .on(t.itemId, t.periodId)
       .where(sql`status in ('pending', 'confirmed')`),
@@ -161,4 +162,16 @@ export const mailLog = pgTable("mail_log", {
   delivered: boolean("delivered").notNull(),
   error: text("error"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+/** Photos des mallettes envoyées depuis l'admin (stockées en base : aucun service de fichiers à configurer). */
+export const itemPhotos = pgTable("item_photos", {
+  itemId: uuid("item_id")
+    .primaryKey()
+    .references(() => items.id, { onDelete: "cascade" }),
+  mime: text("mime").notNull(),
+  data: bytea("data").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

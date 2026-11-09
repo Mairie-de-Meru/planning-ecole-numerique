@@ -26,8 +26,7 @@ export default async function ConfirmPage({ params }: { params: Promise<{ token:
               <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-ok-soft text-ok">
                 <CircleCheck className="size-6" />
               </div>
-              <p className="font-hand text-4xl leading-none text-ok">C&apos;est réservé !</p>
-              <h1 className="mt-2 text-xl font-extrabold tracking-tight">Réservation confirmée</h1>
+              <h1 className=" text-xl font-extrabold tracking-tight">Réservation confirmée</h1>
               <p className="mt-2 text-[15px] text-muted">
                 « {full!.item.name} » est réservée pour la période {full!.period.label}, du {frLong(full!.period.startDate)} au{" "}
                 {frLong(full!.period.endDate)}. Un e-mail récapitulatif vous a été envoyé.
@@ -52,7 +51,7 @@ export default async function ConfirmPage({ params }: { params: Promise<{ token:
               <dl className="mt-5 divide-y divide-dashed divide-line-strong rounded-xl border-2 border-line bg-surface-2/60 text-sm">
                 {(
                   [
-                    ["Valise", full!.item.name],
+                    ["Mallette", full!.item.name],
                     ["Période", `Période ${full!.period.position} · ${full!.period.label}`],
                     ["Du", frLong(full!.period.startDate)],
                     ["Au", frLong(full!.period.endDate)],

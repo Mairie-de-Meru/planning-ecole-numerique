@@ -1,15 +1,15 @@
-# Valises pédagogiques — réservation pour les écoles
+# Mallettes pédagogiques — réservation pour les écoles
 
-Application web de réservation de matériel pédagogique (valises) pour les écoles.
+Application web de réservation de matériel pédagogique (mallettes) pour les écoles.
 
 - **Périodes** = temps de classe entre deux vacances scolaires (zone B par défaut), lues automatiquement sur
   [service-public.gouv.fr](https://www.service-public.gouv.fr/particuliers/vosdroits/F31952) puis **validées par l'admin**.
-- **Premier réservé, premier servi** : une valise = une école par période, garanti par la base de données.
+- **Premier réservé, premier servi** : une mallette = une école par période, garanti par la base de données.
 - **Confirmation par e-mail** : la réservation est bloquée 30 min (réglable) en attente du clic de confirmation,
   puis un second e-mail « réservation faite » est envoyé (avec fichier agenda `.ics`).
 - **Décalage** : l'école déplace sa réservation vers une autre période libre, tant que la période n'a pas commencé.
 - **Accès** : connexion sans mot de passe par lien e-mail, limitée à une **liste blanche** (adresses ou domaines).
-- **Espace admin** : planning global, attribution/décalage/annulation, valises, périodes, écoles, liste blanche,
+- **Espace admin** : planning global, attribution/décalage/annulation, mallettes, périodes, écoles, liste blanche,
   feuille de livraison (impression + CSV), journal des e-mails, réglages (zone, plafond par école, notifications…).
 
 ## Stack
@@ -32,13 +32,13 @@ Next.js 15 (App Router) · TypeScript · Tailwind CSS 4 · PostgreSQL + Drizzle 
    | `CRON_SECRET` | une autre chaîne aléatoire |
    | `SMTP_HOST` / `SMTP_PORT` | ex. Gmail : `smtp.gmail.com` / `465` |
    | `SMTP_USER` / `SMTP_PASS` | l'adresse et un **mot de passe d'application** ([Gmail](https://myaccount.google.com/apppasswords)) |
-   | `MAIL_FROM` | `Valises pédagogiques <votre.adresse@gmail.com>` |
+   | `MAIL_FROM` | `Mallettes pédagogiques <votre.adresse@gmail.com>` |
    | `APP_URL` | (facultatif) l'adresse publique si vous utilisez un nom de domaine |
 
 4. **Redéployer**. Les tables sont créées automatiquement à chaque déploiement (`npm run build` applique les migrations).
 5. Se connecter avec l'adresse admin, puis :
    - **Périodes** → *Lire les dates maintenant* → vérifier → *Appliquer ces dates* ;
-   - **Valises** → ajouter le matériel ;
+   - **Mallettes** → ajouter le matériel (nom, description, couleur, photo) ;
    - **Écoles** → ajouter les adresses ou domaines autorisés (ex. `@ac-amiens.fr`) ;
    - envoyer le lien du site aux écoles.
 
@@ -66,7 +66,7 @@ Sans SMTP en local, le mode test est actif : les liens s'affichent à l'écran e
 Données de démo : connectez-vous avec `jules-ferry@ecole-demo.fr` (école) ou l'adresse de `ADMIN_EMAILS`.
 
 ```bash
-npm test                      # tests (base PostgreSQL de test : TEST_DATABASE_URL, défaut valises_test)
+npm test                      # tests (base PostgreSQL de test : TEST_DATABASE_URL, défaut mallettes_test)
 npm run typecheck
 npm run lint
 ```
@@ -75,11 +75,12 @@ npm run lint
 
 | Règle | Détail |
 |---|---|
-| Unicité | Index unique partiel `(valise, période)` sur les réservations *en attente* ou *confirmées* |
+| Unicité | Index unique partiel `(mallette, période)` sur les réservations *en attente* ou *confirmées* |
 | Attente | Une réservation non confirmée dans le délai expire et libère la case |
-| Plafond | Réglage « valises par école et par période » (0 = illimité) |
+| Plafond | Réglage « mallettes par école et par période » (0 = illimité) |
 | Décalage / annulation | Par l'école tant que la période n'a pas commencé ; par l'admin à tout moment |
 | Périodes | Lues sur service-public.gouv.fr, appliquées seulement après validation ; une période **verrouillée** n'est jamais modifiée automatiquement |
+| Photos | Envoyées depuis Admin → Mallettes, stockées dans la base (aucun service de fichiers à configurer), 3 Mo max |
 | Liens e-mail | Connexion : 20 min, usage unique. Les liens ouvrent une page avec un bouton, pour que les antivirus de messagerie ne les consomment pas |
 
 ## Structure

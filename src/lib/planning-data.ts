@@ -26,6 +26,7 @@ export async function planningData(opts: { zone: string; year?: string; mode: "s
     description: i.description,
     contents: i.contents,
     active: i.active,
+    photoUrl: i.photoUrl,
     color: crayonFor(i.color, idx),
   }));
   const slots: Record<string, GridSlot> = {};
@@ -41,7 +42,7 @@ export async function planningData(opts: { zone: string; year?: string; mode: "s
   return { years, year, periods, items, slots, today };
 }
 
-/** Couleur de chaque valise (même ordre que le planning). */
+/** Couleur de chaque mallette (même ordre que le planning). */
 export async function itemColors(): Promise<Map<string, string>> {
   const { db, schema } = await import("@/db");
   const { asc, eq } = await import("drizzle-orm");
@@ -54,4 +55,16 @@ export async function itemColors(): Promise<Map<string, string>> {
   const map = new Map(rows.map((r, i) => [r.id, crayonFor(r.color, i)]));
   for (const r of all) if (!map.has(r.id)) map.set(r.id, crayonFor(r.color, 0));
   return map;
+}
+
+/** Catalogue des mallettes proposées (avec leur couleur). */
+export async function catalog() {
+  const { db, schema } = await import("@/db");
+  const { asc, eq } = await import("drizzle-orm");
+  const rows = await db
+    .select()
+    .from(schema.items)
+    .where(eq(schema.items.active, true))
+    .orderBy(asc(schema.items.sortOrder), asc(schema.items.name));
+  return rows.map((r, i) => ({ ...r, color: crayonFor(r.color, i) }));
 }

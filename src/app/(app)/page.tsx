@@ -18,8 +18,8 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader
         eyebrow={data.year ? `Année scolaire ${data.year}` : undefined}
-        title="Planning des valises"
-        description="Choisissez une valise et une période libre. La réservation est validée par e-mail."
+        title="Planning des mallettes"
+        description="Choisissez une mallette et une période libre. La réservation est validée par e-mail."
         actions={data.year && <YearTabs years={data.years} current={data.year} base="/" />}
       />
       {!data.year ? (
@@ -27,7 +27,7 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
           Les périodes de réservation n&apos;ont pas encore été publiées. Revenez bientôt.
         </EmptyState>
       ) : !data.items.length ? (
-        <EmptyState icon={<PackageOpen className="size-8" />} title="Aucune valise disponible">
+        <EmptyState icon={<PackageOpen className="size-8" />} title="Aucune mallette disponible">
           Le catalogue est vide pour le moment.
         </EmptyState>
       ) : (

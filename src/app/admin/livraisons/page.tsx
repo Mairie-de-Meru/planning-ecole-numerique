@@ -22,9 +22,8 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
   return (
     <>
       <PageHeader
-        eyebrow="La tournée"
         title="Feuille de livraison"
-        description="Valises à livrer en début de période et à récupérer à la fin (avant la maintenance des vacances)."
+        description="Mallettes à livrer en début de période et à récupérer à la fin (avant la maintenance des vacances)."
         actions={
           selected && (
             <>
@@ -58,7 +57,7 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
             {selected.label} · {selected.schoolYear}
           </h2>
           <p className="mb-5 text-sm text-muted">
-            Livraison à partir du {frLong(selected.startDate)} — retour le {frLong(selected.endDate)} · {rows.length} valise(s)
+            Livraison à partir du {frLong(selected.startDate)} — retour le {frLong(selected.endDate)} · {rows.length} mallette(s)
           </p>
           {!rows.length ? (
             <EmptyState icon={<Truck className="size-8" />} title="Aucune livraison sur cette période" />
@@ -70,7 +69,7 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
                     <th className="px-5 py-3 font-semibold">École</th>
                     <th className="px-5 py-3 font-semibold">Adresse de livraison</th>
                     <th className="px-5 py-3 font-semibold">Contact</th>
-                    <th className="px-5 py-3 font-semibold">Valise</th>
+                    <th className="px-5 py-3 font-semibold">Mallette</th>
                     <th className="no-print px-5 py-3 font-semibold">Livrée</th>
                   </tr>
                 </thead>

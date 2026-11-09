@@ -7,8 +7,10 @@ import { Badge, Field, Input, PageHeader, Textarea } from "@/components/ui";
 import { deleteItemAction, saveItemAction } from "../actions";
 import type { Item } from "@/db/schema";
 import { CRAYONS, crayonFor } from "@/lib/colors";
+import { Thumb } from "@/components/thumb";
+import { PhotoInput } from "@/components/photo-input";
 
-export const metadata = { title: "Valises" };
+export const metadata = { title: "Mallettes" };
 
 function ColorPicker({ value, fallbackIndex }: { value?: string | null; fallbackIndex: number }) {
   const current = value ?? CRAYONS[fallbackIndex % CRAYONS.length].key;
@@ -37,7 +39,7 @@ function ItemFields({ item, index = 0 }: { item?: Item; index?: number }) {
       {item && <input type="hidden" name="id" value={item.id} />}
       <div className="grid gap-5 sm:grid-cols-[1fr_8rem]">
         <Field label="Nom">
-          <Input name="name" required defaultValue={item?.name} placeholder="Valise tablettes n°1" />
+          <Input name="name" required defaultValue={item?.name} placeholder="Mallette tablettes n°1" />
         </Field>
         <Field label="Ordre">
           <Input name="sortOrder" type="number" defaultValue={item?.sortOrder ?? 0} />
@@ -49,7 +51,24 @@ function ItemFields({ item, index = 0 }: { item?: Item; index?: number }) {
       <Field label="Contenu détaillé">
         <Textarea name="contents" defaultValue={item?.contents} placeholder="15 tablettes, chargeur multiple, coques, guide pédagogique…" />
       </Field>
-      <ColorPicker value={item?.color} fallbackIndex={index} />
+      <div className="grid gap-5 sm:grid-cols-2">
+        <ColorPicker value={item?.color} fallbackIndex={index} />
+        <div>
+          <p className="mb-1.5 text-sm font-bold">Photo</p>
+          <div className="flex items-center gap-3">
+            <Thumb src={item?.photoUrl} color={crayonFor(item?.color, index)} alt="" className="size-16" />
+            <div className="min-w-0 space-y-1.5">
+              <PhotoInput />
+              <p className="text-xs text-muted">JPG, PNG ou WebP, 3 Mo max. Fond blanc conseillé.</p>
+              {item?.photoUrl && (
+                <label className="flex items-center gap-2 text-xs font-semibold text-muted">
+                  <input type="checkbox" name="removePhoto" className="size-3.5 accent-[var(--accent)]" /> Retirer la photo
+                </label>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
       <label className="flex items-center gap-2.5 text-sm font-semibold">
         <input type="checkbox" name="active" defaultChecked={item?.active ?? true} className="size-4 accent-[var(--accent)]" />
         Proposée à la réservation
@@ -62,12 +81,12 @@ export default async function ItemsPage() {
   const items = await db.select().from(schema.items).orderBy(asc(schema.items.sortOrder), asc(schema.items.name));
   return (
     <>
-      <PageHeader eyebrow="Le matériel" title="Valises" description="Le matériel proposé aux écoles. Chaque valise se réserve pour une période entière." />
+      <PageHeader title="Mallettes" description="Le matériel proposé aux écoles. Chaque mallette se réserve pour une période entière." />
       <div className="space-y-3">
         <Disclosure
           summary={
             <span className="inline-flex items-center gap-2 font-semibold text-accent">
-              <Plus className="size-4" /> Ajouter une valise
+              <Plus className="size-4" /> Ajouter une mallette
             </span>
           }
         >
@@ -80,7 +99,8 @@ export default async function ItemsPage() {
             key={item.id}
             summary={
               <div className="flex items-center gap-3">
-                <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ background: crayonFor(item.color, index) }} />
+                <span className="h-9 w-1 shrink-0 rounded-full" style={{ background: crayonFor(item.color, index) }} />
+                <Thumb src={item.photoUrl} color={crayonFor(item.color, index)} alt="" className="size-11" />
                 <div className="min-w-0">
                   <div className="truncate font-semibold">{item.name}</div>
                   {item.description && <div className="truncate text-sm text-muted">{item.description}</div>}

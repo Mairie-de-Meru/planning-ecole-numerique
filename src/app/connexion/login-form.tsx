@@ -15,8 +15,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
         <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-accent-soft text-accent">
           <MailCheck className="size-6" />
         </div>
-        <p className="font-hand text-4xl leading-none text-accent">C&apos;est parti !</p>
-        <h2 className="mt-2 text-lg font-extrabold">Vérifiez votre boîte mail</h2>
+        <h2 className="text-lg font-extrabold">Vérifiez votre boîte mail</h2>
         <p className="mt-2 text-[15px] text-muted">
           Un lien de connexion a été envoyé à <span className="font-semibold text-ink">{state.message}</span>. Il est valable 20 minutes.
         </p>

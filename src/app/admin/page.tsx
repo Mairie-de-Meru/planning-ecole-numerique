@@ -41,8 +41,8 @@ export default async function AdminPlanning({ searchParams }: { searchParams: Pr
           Ajoutez des périodes ou lancez la mise à jour automatique depuis l&apos;onglet <Link className="underline" href="/admin/periodes">Périodes</Link>.
         </EmptyState>
       ) : !data.items.length ? (
-        <EmptyState icon={<PackageOpen className="size-8" />} title="Aucune valise">
-          Ajoutez votre première valise depuis l&apos;onglet <Link className="underline" href="/admin/valises">Valises</Link>.
+        <EmptyState icon={<PackageOpen className="size-8" />} title="Aucune mallette">
+          Ajoutez votre première mallette depuis l&apos;onglet <Link className="underline" href="/admin/mallettes">Mallettes</Link>.
         </EmptyState>
       ) : (
         <Planning mode="admin" periods={data.periods} items={data.items} slots={data.slots}

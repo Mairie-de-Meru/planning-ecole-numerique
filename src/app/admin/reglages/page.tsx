@@ -44,7 +44,7 @@ export default async function SettingsPage() {
               <Input name="confirmTtlMinutes" type="number" min={5} max={1440} defaultValue={s.confirmTtlMinutes} />
             </Field>
           </div>
-          <Field label="Valises par école et par période" hint="0 = illimité.">
+          <Field label="Mallettes par école et par période" hint="0 = illimité.">
             <Input name="maxPerSchoolPerPeriod" type="number" min={0} max={50} defaultValue={s.maxPerSchoolPerPeriod} className="sm:max-w-40" />
           </Field>
           <Field label="Source des dates de vacances">

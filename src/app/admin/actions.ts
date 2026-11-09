@@ -55,7 +55,7 @@ export async function adminCancelAction(reservationId: string): Promise<ActionRe
   }
 }
 
-/* ---------------- Valises ---------------- */
+/* ---------------- Mallettes ---------------- */
 
 export async function saveItemAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   await requireAdmin();
@@ -64,23 +64,45 @@ export async function saveItemAction(_: ActionResult, form: FormData): Promise<A
     name: String(form.get("name") ?? "").trim(),
     description: String(form.get("description") ?? "").trim(),
     contents: String(form.get("contents") ?? "").trim(),
-    photoUrl: String(form.get("photoUrl") ?? "").trim() || null,
     sortOrder: Number(form.get("sortOrder") ?? 0) || 0,
     color: String(form.get("color") ?? "") || null,
     active: form.get("active") === "on",
   };
   if (!values.name) return { ok: false, message: "Le nom est obligatoire." };
+
+  const file = form.get("photo");
+  const photo = file instanceof File && file.size > 0 ? file : null;
+  if (photo) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(photo.type))
+      return { ok: false, message: "Photo : formats acceptés JPG, PNG ou WebP." };
+    if (photo.size > 3 * 1024 * 1024) return { ok: false, message: "Photo trop lourde (3 Mo maximum)." };
+  }
+
+  let itemId = id;
   if (id) await db.update(schema.items).set(values).where(eq(schema.items.id, id));
-  else await db.insert(schema.items).values(values);
+  else [{ id: itemId }] = await db.insert(schema.items).values(values).returning({ id: schema.items.id });
+
+  if (photo) {
+    const data = Buffer.from(await photo.arrayBuffer());
+    const now = new Date();
+    await db
+      .insert(schema.itemPhotos)
+      .values({ itemId, mime: photo.type, data, updatedAt: now })
+      .onConflictDoUpdate({ target: schema.itemPhotos.itemId, set: { mime: photo.type, data, updatedAt: now } });
+    await db.update(schema.items).set({ photoUrl: `/photos/${itemId}?v=${now.getTime()}` }).where(eq(schema.items.id, itemId));
+  } else if (form.get("removePhoto") === "on") {
+    await db.delete(schema.itemPhotos).where(eq(schema.itemPhotos.itemId, itemId));
+    await db.update(schema.items).set({ photoUrl: null }).where(eq(schema.items.id, itemId));
+  }
   refresh();
-  return { ok: true, message: id ? "Valise mise à jour." : "Valise ajoutée." };
+  return { ok: true, message: id ? "Mallette mise à jour." : "Mallette ajoutée." };
 }
 
 export async function deleteItemAction(form: FormData) {
   await requireAdmin();
   const id = String(form.get("id"));
   const [used] = await db.select({ id: schema.reservations.id }).from(schema.reservations).where(eq(schema.reservations.itemId, id)).limit(1);
-  // Une valise avec un historique est seulement désactivée.
+  // Une mallette avec un historique est seulement désactivée.
   if (used) await db.update(schema.items).set({ active: false }).where(eq(schema.items.id, id));
   else await db.delete(schema.items).where(eq(schema.items.id, id));
   refresh();
@@ -213,7 +235,7 @@ export async function saveSettingsAction(_: ActionResult, form: FormData): Promi
   if (!(max >= 0 && max <= 50)) return { ok: false, message: "Plafond entre 0 (illimité) et 50." };
   if (!/^https?:\/\//.test(sourceUrl)) return { ok: false, message: "Adresse de la source invalide." };
   await updateSettings({
-    appName: String(form.get("appName") ?? "").trim() || "Valises pédagogiques",
+    appName: String(form.get("appName") ?? "").trim() || "Mallettes pédagogiques",
     zone,
     sourceUrl,
     syncEnabled: form.get("syncEnabled") === "on",
