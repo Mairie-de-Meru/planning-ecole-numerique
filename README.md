@@ -23,7 +23,13 @@ Next.js 15 (App Router) · TypeScript · Tailwind CSS 4 · PostgreSQL + Drizzle 
 
 ---
 
-## Mise en ligne (Vercel + Neon, gratuit)
+## Mise en ligne sur la VM de la ville (Cosmos Cloud / Docker) — recommandé
+
+Voir **[deploy/COSMOS.md](deploy/COSMOS.md)** : un fichier `docker-compose.yml` à importer dans Cosmos (application,
+PostgreSQL, tâches planifiées et sauvegarde quotidienne). L'image est construite par GitHub Actions et publiée sur
+`ghcr.io/mairie-de-meru/planning-ecole-numerique`.
+
+## Autre option : Vercel + Neon
 
 1. **Vercel** → *Add New → Project* → importer ce dépôt GitHub (laisser les réglages par défaut).
 2. Dans le projet Vercel : **Storage → Create Database → Neon (Postgres)** → *Connect*.

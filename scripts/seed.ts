@@ -8,8 +8,16 @@ import "dotenv/config";
 import postgres from "postgres";
 
 async function main() {
-  const sql = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false, onnotice: () => {} });
   await sql`insert into settings (id) values (1) on conflict do nothing`;
+
+  // Données initiales seulement sur une base vide (jamais d'écrasement des modifications de l'admin).
+  const [{ n }] = await sql`select count(*)::int as n from items`;
+  if (n > 0 && process.env.SEED_FORCE !== "1") {
+    console.log("Base déjà initialisée : données initiales ignorées.");
+    await sql.end();
+    return;
+  }
 
   // Matériel en circulation, repris des conventions papier (fiches de prêt, juin 2026).
   // Format : Désignation | N° de série | Qté | État
@@ -84,7 +92,9 @@ async function main() {
               on conflict (school_year, position, zone) do nothing`;
   }
 
-  for (const p of ["@ecole-demo.fr"]) await sql`insert into allowlist (pattern) values (${p}) on conflict do nothing`;
+  // Domaine de démonstration (tests locaux uniquement)
+  if (process.env.SEED_DEMO === "1" || process.env.NODE_ENV !== "production")
+    for (const p of ["@ecole-demo.fr"]) await sql`insert into allowlist (pattern) values (${p}) on conflict do nothing`;
 
   // Écoles maternelles de Méru (source : ville-meru.fr/nos-ecoles, novembre 2026).
   // Sans adresse e-mail : chaque école se rattache à sa fiche à sa première connexion.

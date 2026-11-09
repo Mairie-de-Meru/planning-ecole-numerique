@@ -310,7 +310,10 @@ export async function sendConventionEmail(id: string) {
   if (!full || !full.school.email) throw new ConventionError("Aucune adresse e-mail pour cette école.");
   const settings = await getSettings();
   const c = full.convention;
-  const attachment = await conventionAttachment(id);
+  const attachment = await conventionAttachment(id).catch((e) => {
+    console.error("pdf", e);
+    return null;
+  });
   const { html, text } = renderMail({
     appName: settings.appName,
     title: c.status === "signed" ? "Votre convention de prêt" : "Convention de prêt à signer",

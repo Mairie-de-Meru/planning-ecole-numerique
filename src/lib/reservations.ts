@@ -194,7 +194,11 @@ async function notifyConfirmed(item: Item, period: Period, school: School, reser
     : [];
   const attachments = [];
   if (conv?.convention.emailCopy) {
-    const pdf = await conventionAttachment(conv.convention.id);
+    // Un problème de PDF ne doit jamais bloquer la confirmation.
+    const pdf = await conventionAttachment(conv.convention.id).catch((e) => {
+      console.error("pdf", e);
+      return null;
+    });
     if (pdf) attachments.push(pdf);
   }
   const { html, text } = renderMail({
