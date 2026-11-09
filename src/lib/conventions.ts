@@ -1,11 +1,12 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, schema, type Tx } from "@/db";
-import type { Item, Period, School, Settings } from "@/db/schema";
+import type { Convention, Item, Period, School, Settings } from "@/db/schema";
 import { BookingError } from "./errors";
 import { DEFAULT_TEMPLATE, fillTemplate, toHtml, toPdf } from "./convention-doc";
 import { frLong } from "./dates";
 import { renderMail, sendMail, type MailAttachment } from "./mail";
 import { appUrl, getSettings } from "./settings";
+import { hashToken, newToken } from "./tokens";
 import { inventorySummary, parseInventory, toLoanSheet, type LoanLine } from "./inventory";
 
 export class ConventionError extends BookingError {}
@@ -261,8 +262,24 @@ export async function conventionPdf(id: string): Promise<{ buffer: Buffer; filen
     loan: { from: frLong(full.period.startDate), to: frLong(full.period.endDate) },
     storage: c.storageLocation,
     sheet: (c.loanSheet as LoanLine[]) ?? [],
-    delivery: c.deliveredAt ? { at: frLong(c.deliveredAt), by: c.deliveredBy ?? "", note: c.deliveryNote ?? "" } : null,
-    returned: c.returnedAt ? { at: frLong(c.returnedAt), by: c.returnedBy ?? "", note: c.returnNote ?? "" } : null,
+    delivery: c.deliveredAt
+      ? {
+          at: frLong(c.deliveredAt),
+          by: c.deliveredBy ?? "",
+          note: c.deliveryNote ?? "",
+          accepted: c.deliveryAcceptedAt ? `Confirmée par ${c.deliveryAcceptedName} le ${formatStamp(c.deliveryAcceptedAt)} (${c.deliveryAcceptedMethod})` : null,
+          signature: c.deliveryAcceptedSignature,
+        }
+      : null,
+    returned: c.returnedAt
+      ? {
+          at: frLong(c.returnedAt),
+          by: c.returnedBy ?? "",
+          note: c.returnNote ?? "",
+          accepted: c.returnAcceptedAt ? `Confirmée par ${c.returnAcceptedName} le ${formatStamp(c.returnAcceptedAt)} (${c.returnAcceptedMethod})` : null,
+          signature: c.returnAcceptedSignature,
+        }
+      : null,
     appName: settings.appName,
     status: c.status,
     signer:
@@ -356,7 +373,18 @@ export async function recordDelivery(conventionId: string, h: HandoverInput) {
   const sheet = ((c.loanSheet as LoanLine[]) ?? []).map((l, i) => ({ ...l, stateOut: h.states[i] || l.state || null }));
   await db
     .update(schema.conventions)
-    .set({ loanSheet: sheet, deliveredAt: h.at, deliveredBy: h.by.trim(), deliveryNote: h.note.trim(), updatedAt: new Date() })
+    .set({
+      loanSheet: sheet,
+      deliveredAt: h.at,
+      deliveredBy: h.by.trim(),
+      deliveryNote: h.note.trim(),
+      // une remise modifiée doit être acceptée à nouveau
+      deliveryAcceptedAt: null,
+      deliveryAcceptedName: null,
+      deliveryAcceptedMethod: null,
+      deliveryAcceptedSignature: null,
+      updatedAt: new Date(),
+    })
     .where(eq(schema.conventions.id, conventionId));
 }
 
@@ -372,7 +400,17 @@ export async function recordReturn(conventionId: string, h: HandoverInput) {
   await db.transaction(async (tx) => {
     await tx
       .update(schema.conventions)
-      .set({ loanSheet: sheet, returnedAt: h.at, returnedBy: h.by.trim(), returnNote: h.note.trim(), updatedAt: new Date() })
+      .set({
+        loanSheet: sheet,
+        returnedAt: h.at,
+        returnedBy: h.by.trim(),
+        returnNote: h.note.trim(),
+        returnAcceptedAt: null,
+        returnAcceptedName: null,
+        returnAcceptedMethod: null,
+        returnAcceptedSignature: null,
+        updatedAt: new Date(),
+      })
       .where(eq(schema.conventions.id, conventionId));
     // L'état constaté à la reprise devient l'état courant du matériel (ligne retrouvée par n° de série ou désignation).
     const current = parseInventory(full.item.inventory);
@@ -383,4 +421,110 @@ export async function recordReturn(conventionId: string, h: HandoverInput) {
     const { formatInventory } = await import("./inventory");
     await tx.update(schema.items).set({ inventory: formatInventory(updated) }).where(eq(schema.items.id, full.item.id));
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* Fiche de prêt en ligne : lien, envoi, acceptation par l'école       */
+/* ------------------------------------------------------------------ */
+
+export type SheetStep = "delivery" | "return";
+
+/** Crée (ou renouvelle) le lien de la fiche de prêt ; les liens précédents cessent de fonctionner. */
+export async function issueSheetLink(conventionId: string): Promise<string> {
+  const { token, hash } = newToken();
+  const done = await db
+    .update(schema.conventions)
+    .set({ sheetTokenHash: hash })
+    .where(eq(schema.conventions.id, conventionId))
+    .returning({ id: schema.conventions.id });
+  if (!done.length) throw new ConventionError("Convention introuvable.");
+  return `${appUrl()}/fiche/${token}`;
+}
+
+export async function getBySheetToken(token: string) {
+  if (!token || token.length < 20) return null;
+  const [row] = await db
+    .select({ id: schema.conventions.id })
+    .from(schema.conventions)
+    .where(eq(schema.conventions.sheetTokenHash, hashToken(token)));
+  return row ? getConvention(row.id) : null;
+}
+
+/** Étape à faire accepter : la remise si elle n'est pas acceptée, sinon la reprise. */
+export function pendingStep(c: Convention): SheetStep | null {
+  if (c.deliveredAt && !c.deliveryAcceptedAt) return "delivery";
+  if (c.returnedAt && !c.returnAcceptedAt) return "return";
+  return null;
+}
+
+/** Envoie à l'école le lien de la fiche de prêt (un clic depuis l'admin). */
+export async function sendLoanSheet(conventionId: string): Promise<{ url: string; to: string }> {
+  const full = await getConvention(conventionId);
+  if (!full) throw new ConventionError("Convention introuvable.");
+  if (!full.school.email) throw new ConventionError("Cette école n'a pas encore d'adresse e-mail : faites accepter la fiche sur place.");
+  const url = await issueSheetLink(conventionId);
+  const settings = await getSettings();
+  const c = full.convention;
+  const step = pendingStep(c);
+  const title =
+    step === "delivery"
+      ? "Fiche de prêt : merci de confirmer la remise"
+      : step === "return"
+        ? "Fiche de prêt : merci de confirmer la reprise"
+        : "Votre fiche de prêt";
+  const { html, text } = renderMail({
+    appName: settings.appName,
+    title,
+    blocks: [
+      {
+        kind: "p",
+        text: step
+          ? `Le ${settings.itService} a enregistré la ${step === "delivery" ? "remise" : "reprise"} de « ${full.item.name} ». Vérifiez l'état du matériel indiqué sur la fiche de prêt puis confirmez-le en un clic.`
+          : `Retrouvez la fiche de prêt de « ${full.item.name} » : matériel, numéros de série et état à la remise et à la reprise.`,
+      },
+      {
+        kind: "facts",
+        rows: [
+          ["Mallette", full.item.name],
+          ["Période", `Période ${full.period.position} · ${full.period.schoolYear}`],
+          ...(c.deliveredAt ? ([["Remise", frLong(c.deliveredAt)]] as [string, string][]) : []),
+          ...(c.returnedAt ? ([["Reprise", frLong(c.returnedAt)]] as [string, string][]) : []),
+        ],
+      },
+    ],
+    button: { label: step ? "Ouvrir et confirmer la fiche" : "Ouvrir la fiche de prêt", url },
+  });
+  await sendMail({ to: full.school.email, subject: `${title} — ${full.item.name}`, html, text });
+  return { url, to: full.school.email };
+}
+
+export type AcceptInput = { accepted: boolean; name: string; signatureImage?: string | null };
+
+/** Acceptation de l'état constaté, par l'école (en ligne ou sur la tablette du service informatique). */
+export async function acceptSheetStep(token: string, step: SheetStep, input: AcceptInput, onSite: boolean) {
+  const full = await getBySheetToken(token);
+  if (!full) throw new ConventionError("Ce lien n'est plus valable. Demandez un nouvel envoi au service informatique.");
+  const c = full.convention;
+  if (c.status === "cancelled") throw new ConventionError("Cette réservation a été annulée.");
+  if (!input.accepted) throw new ConventionError("Cochez la case de confirmation.");
+  const name = input.name.trim();
+  if (name.length < 3 || name.length > 120) throw new ConventionError("Indiquez votre nom.");
+  if (input.signatureImage && (!input.signatureImage.startsWith("data:image/png;base64,") || input.signatureImage.length > 500_000))
+    throw new ConventionError("Signature illisible : recommencez.");
+  const method = onSite ? "sur place, en présence du service informatique" : "en ligne";
+  if (step === "delivery") {
+    if (!c.deliveredAt) throw new ConventionError("La remise n'a pas encore été enregistrée.");
+    if (c.deliveryAcceptedAt) throw new ConventionError("La remise a déjà été confirmée.");
+    await db
+      .update(schema.conventions)
+      .set({ deliveryAcceptedAt: new Date(), deliveryAcceptedName: name, deliveryAcceptedMethod: method, deliveryAcceptedSignature: input.signatureImage || null })
+      .where(eq(schema.conventions.id, c.id));
+  } else {
+    if (!c.returnedAt) throw new ConventionError("La reprise n'a pas encore été enregistrée.");
+    if (c.returnAcceptedAt) throw new ConventionError("La reprise a déjà été confirmée.");
+    await db
+      .update(schema.conventions)
+      .set({ returnAcceptedAt: new Date(), returnAcceptedName: name, returnAcceptedMethod: method, returnAcceptedSignature: input.signatureImage || null })
+      .where(eq(schema.conventions.id, c.id));
+  }
 }

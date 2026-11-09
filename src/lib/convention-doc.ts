@@ -128,6 +128,8 @@ export function toHtml(text: string): string {
 /* PDF                                                                 */
 /* ------------------------------------------------------------------ */
 
+type Handover = { at: string; by: string; note: string; accepted: string | null; signature: string | null };
+
 export type PdfMeta = {
   number: string;
   lender: string;
@@ -138,8 +140,8 @@ export type PdfMeta = {
   loan: { from: string; to: string };
   storage: string | null;
   sheet: { label: string; serial: string; qty: number; stateOut: string | null; stateIn: string | null }[];
-  delivery: { at: string; by: string; note: string } | null;
-  returned: { at: string; by: string; note: string } | null;
+  delivery: Handover | null;
+  returned: Handover | null;
   appName: string;
   status: "to_sign" | "signed" | "cancelled";
   signer?: { name: string; title: string; email: string; at: string; method: string; image?: string | null } | null;
@@ -316,19 +318,32 @@ export function toPdf(text: string, meta: PdfMeta): Promise<Buffer> {
     for (const l of meta.sheet) row([l.label, l.serial || "N/A", String(l.qty), l.stateOut ?? "", l.stateIn ?? ""]);
     doc.moveDown(1);
 
-    const handover = (title: string, d: { at: string; by: string; note: string } | null) => {
-      if (doc.y > doc.page.height - 140) doc.addPage();
+    const handover = (title: string, d: Handover | null) => {
+      if (doc.y > doc.page.height - 170) doc.addPage();
       const y0 = doc.y;
-      doc.roundedRect(left, y0, width, 66, 8).lineWidth(0.8).strokeColor("#d8d0bd").stroke();
+      const boxH = d?.accepted ? (d.signature ? 120 : 82) : 66;
+      doc.roundedRect(left, y0, width, boxH, 8).lineWidth(0.8).strokeColor("#d8d0bd").stroke();
       doc.font("Helvetica-Bold").fontSize(8.5).fillColor(muted).text(title.toUpperCase(), left + 12, y0 + 10, { characterSpacing: 0.5 });
       doc.font("Helvetica").fontSize(9.5).fillColor(ink);
       if (d) {
         doc.text(pdfSafe(`Le ${d.at}, par ${d.by} (pour le prêteur), en présence de l'école.`), left + 12, y0 + 26, { width: width - 24 });
         doc.text(pdfSafe(`Observation : ${d.note || "—"}`), left + 12, doc.y + 2, { width: width - 24 });
+        if (d.accepted) {
+          doc.font("Helvetica-Bold").fillColor("#2f8a45").text(pdfSafe(`Pour l'école : ${d.accepted}`), left + 12, doc.y + 2, { width: width - 24 });
+          if (d.signature?.startsWith("data:image/png;base64,")) {
+            try {
+              doc.image(Buffer.from(d.signature.split(",")[1], "base64"), left + 12, doc.y + 2, { fit: [160, 36] });
+            } catch {
+              /* ignorée */
+            }
+          }
+        } else {
+          doc.font("Helvetica").fillColor(muted).text("En attente de confirmation par l'école.", left + 12, doc.y + 2, { width: width - 24 });
+        }
       } else {
         doc.fillColor(muted).text("À compléter par le service informatique.", left + 12, y0 + 26, { width: width - 24 });
       }
-      doc.y = y0 + 76;
+      doc.y = y0 + boxH + 10;
       doc.x = left;
     };
     handover("Remise du matériel", meta.delivery);

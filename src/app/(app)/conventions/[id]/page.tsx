@@ -7,11 +7,22 @@ import { ConventionText } from "@/components/signature-form";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { ConventionToolbar, SignConvention } from "./convention-actions";
 import { HandoverForm } from "./handover-form";
+import { SheetButtons } from "@/components/sheet-buttons";
 import { Disclosure } from "@/components/disclosure";
 import { frLong, todayParis } from "@/lib/dates";
 import type { LoanLine } from "@/lib/inventory";
 
 export const metadata = { title: "Convention de prêt" };
+
+function Accepted({ at, name, method }: { at: Date | null; name: string | null; method: string | null }) {
+  return at ? (
+    <span className="mt-1 block text-xs font-semibold text-ok">
+      ✓ Confirmée par {name} le {formatStamp(at)}, {method}
+    </span>
+  ) : (
+    <span className="mt-1 block text-xs font-semibold text-warn">En attente de confirmation par l&apos;école</span>
+  );
+}
 
 export default async function ConventionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -101,11 +112,14 @@ export default async function ConventionPage({ params }: { params: Promise<{ id:
       </Card>
 
       <Card className="mt-6 overflow-hidden">
-        <div className="border-b border-line px-6 py-4 sm:px-10">
-          <h2 className="text-lg font-extrabold">Fiche de prêt</h2>
-          <p className="text-sm text-muted">
-            Du {frLong(full.period.startDate)} au {frLong(full.period.endDate)} · stockage : {c.storageLocation ?? "à préciser à la signature"}
-          </p>
+        <div className="flex flex-col gap-4 border-b border-line px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-10">
+          <div>
+            <h2 className="text-lg font-extrabold">Fiche de prêt</h2>
+            <p className="text-sm text-muted">
+              Du {frLong(full.period.startDate)} au {frLong(full.period.endDate)} · stockage : {c.storageLocation ?? "à préciser à la signature"}
+            </p>
+          </div>
+          {user.admin && c.status !== "cancelled" && <SheetButtons conventionId={id} canEmail={!!full.school.email} size="sm" />}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -138,6 +152,7 @@ export default async function ConventionPage({ params }: { params: Promise<{ id:
               <p className="mt-1">
                 Le {frLong(c.deliveredAt)} par {c.deliveredBy}
                 {c.deliveryNote && <span className="block text-muted">{c.deliveryNote}</span>}
+                <Accepted at={c.deliveryAcceptedAt} name={c.deliveryAcceptedName} method={c.deliveryAcceptedMethod} />
               </p>
             ) : (
               <p className="mt-1 text-muted">À compléter par le service informatique à la livraison.</p>
@@ -149,6 +164,7 @@ export default async function ConventionPage({ params }: { params: Promise<{ id:
               <p className="mt-1">
                 Le {frLong(c.returnedAt)} par {c.returnedBy}
                 {c.returnNote && <span className="block text-muted">{c.returnNote}</span>}
+                <Accepted at={c.returnAcceptedAt} name={c.returnAcceptedName} method={c.returnAcceptedMethod} />
               </p>
             ) : (
               <p className="mt-1 text-muted">À compléter par le service informatique à la reprise.</p>
@@ -164,6 +180,7 @@ export default async function ConventionPage({ params }: { params: Promise<{ id:
               kind="delivery"
               id={id}
               sheet={sheet}
+              canEmail={!!full.school.email}
               defaults={{
                 at: c.deliveredAt ?? (todayParis() < full.period.startDate ? full.period.startDate : todayParis()),
                 by: c.deliveredBy ?? `${settings.lenderSignatoryName}, ${settings.lenderSignatoryTitle.toLowerCase()}`,
@@ -177,6 +194,7 @@ export default async function ConventionPage({ params }: { params: Promise<{ id:
                 kind="return"
                 id={id}
                 sheet={sheet}
+                canEmail={!!full.school.email}
                 defaults={{
                   at: c.returnedAt ?? [todayParis(), full.period.endDate, c.deliveredAt].sort()[1],
                   by: c.returnedBy ?? `${settings.lenderSignatoryName}, ${settings.lenderSignatoryTitle.toLowerCase()}`,

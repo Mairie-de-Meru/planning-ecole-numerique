@@ -319,13 +319,48 @@ function handoverFrom(form: FormData) {
   };
 }
 
+async function maybeSend(form: FormData, done: string): Promise<ActionResult> {
+  if (form.get("send") !== "on") return { ok: true, message: done };
+  const { sendLoanSheet } = await import("@/lib/conventions");
+  const { testMode } = await import("@/lib/mail");
+  try {
+    const r = await sendLoanSheet(String(form.get("id")));
+    return { ok: true, message: `${done} Fiche envoyée à ${r.to} pour confirmation.`, link: testMode() ? r.url : undefined };
+  } catch (e) {
+    return { ok: true, message: `${done} ${e instanceof Error ? e.message : ""}` };
+  }
+}
+
+export async function sendLoanSheetAction(conventionId: string): Promise<ActionResult> {
+  await requireAdmin();
+  try {
+    const { sendLoanSheet } = await import("@/lib/conventions");
+    const { testMode } = await import("@/lib/mail");
+    const r = await sendLoanSheet(conventionId);
+    return { ok: true, message: `Fiche de prêt envoyée à ${r.to}.`, link: testMode() ? r.url : undefined };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Ouvre la fiche pour la faire accepter sur place (tablette du service informatique). */
+export async function sheetLinkAction(conventionId: string): Promise<ActionResult> {
+  await requireAdmin();
+  try {
+    const { issueSheetLink } = await import("@/lib/conventions");
+    return { ok: true, message: "", link: await issueSheetLink(conventionId) };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 export async function recordDeliveryAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   await requireAdmin();
   try {
     const { recordDelivery } = await import("@/lib/conventions");
     await recordDelivery(String(form.get("id")), handoverFrom(form));
     refresh();
-    return { ok: true, message: "Remise enregistrée sur la fiche de prêt." };
+    return maybeSend(form, "Remise enregistrée sur la fiche de prêt.");
   } catch (e) {
     return fail(e);
   }
@@ -337,7 +372,7 @@ export async function recordReturnAction(_: ActionResult, form: FormData): Promi
     const { recordReturn } = await import("@/lib/conventions");
     await recordReturn(String(form.get("id")), handoverFrom(form));
     refresh();
-    return { ok: true, message: "Reprise enregistrée. L'inventaire de la mallette a été mis à jour." };
+    return maybeSend(form, "Reprise enregistrée. L'inventaire de la mallette a été mis à jour.");
   } catch (e) {
     return fail(e);
   }

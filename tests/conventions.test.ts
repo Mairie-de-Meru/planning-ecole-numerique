@@ -146,3 +146,58 @@ describe("fiche de prêt", () => {
     expect(pdf.buffer.length).toBeGreaterThan(3000);
   });
 });
+
+describe("fiche de prêt en ligne", () => {
+  it("lien, envoi, confirmation de la remise puis de la reprise", async () => {
+    const { issueSheetLink, getBySheetToken, acceptSheetStep, recordDelivery, recordReturn, sendLoanSheet, pendingStep } = await import("@/lib/conventions");
+    const { reservation } = await bookReservation({ schoolId, itemId, periodId: p1, actorEmail: "bellonte@ecole.fr", sign });
+    const c = (await getConventionByReservation(reservation.id))!;
+    const url = await issueSheetLink(c.convention.id);
+    const token = url.split("/fiche/")[1];
+    expect((await getBySheetToken(token))?.convention.id).toBe(c.convention.id);
+    expect(await getBySheetToken("x".repeat(40))).toBeNull();
+
+    const ok = { accepted: true, name: "Estelle MENDES" };
+    await expect(acceptSheetStep(token, "delivery", ok, false)).rejects.toThrow(/pas encore été enregistrée/);
+
+    await recordDelivery(c.convention.id, { at: "2030-11-04", by: "Gildas DUMONT", note: "", states: [] });
+    // un nouvel envoi invalide l'ancien lien
+    const sent = await sendLoanSheet(c.convention.id);
+    expect(sent.to).toBe("bellonte@ecole.fr");
+    expect(await getBySheetToken(token)).toBeNull();
+    const t2 = sent.url.split("/fiche/")[1];
+    const mail = (await db.select().from(schema.mailLog)).find((m) => m.subject.startsWith("Fiche de prêt : merci de confirmer la remise"));
+    expect(mail?.text).toContain(sent.url);
+
+    await expect(acceptSheetStep(t2, "delivery", { ...ok, accepted: false }, false)).rejects.toThrow(/Cochez/);
+    await acceptSheetStep(t2, "delivery", ok, true);
+    let after = (await getConventionByReservation(reservation.id))!.convention;
+    expect(after.deliveryAcceptedMethod).toBe("sur place, en présence du service informatique");
+    expect(pendingStep(after)).toBeNull();
+    await expect(acceptSheetStep(t2, "delivery", ok, false)).rejects.toThrow(/déjà été confirmée/);
+
+    // une remise modifiée doit être confirmée de nouveau
+    await recordDelivery(c.convention.id, { at: "2030-11-05", by: "Gildas DUMONT", note: "", states: [] });
+    after = (await getConventionByReservation(reservation.id))!.convention;
+    expect(after.deliveryAcceptedAt).toBeNull();
+    await acceptSheetStep(t2, "delivery", ok, false);
+
+    await recordReturn(c.convention.id, { at: "2030-12-19", by: "Gildas DUMONT", note: "", states: [] });
+    after = (await getConventionByReservation(reservation.id))!.convention;
+    expect(pendingStep(after)).toBe("return");
+    await acceptSheetStep(t2, "return", { ...ok, signatureImage: "data:image/png;base64,iVBORw0KGgo=" }, false);
+    after = (await getConventionByReservation(reservation.id))!.convention;
+    expect(after.returnAcceptedMethod).toBe("en ligne");
+    expect(after.returnAcceptedSignature).toContain("data:image/png");
+    const pdf = (await conventionPdf(c.convention.id))!;
+    expect(pdf.buffer.subarray(0, 5).toString()).toBe("%PDF-");
+  });
+
+  it("école sans adresse e-mail : envoi refusé avec un message clair", async () => {
+    const { sendLoanSheet } = await import("@/lib/conventions");
+    const [{ id: noMail }] = await db.insert(schema.schools).values({ name: "École maternelle Pasteur", address: "x" }).returning();
+    const r = await adminCreateReservation({ schoolId: noMail, itemId, periodId: p2, adminEmail: "admin@mairie.fr" });
+    const c = (await getConventionByReservation(r.id))!;
+    await expect(sendLoanSheet(c.convention.id)).rejects.toThrow(/sur place/);
+  });
+});

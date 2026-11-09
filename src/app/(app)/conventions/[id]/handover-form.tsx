@@ -12,11 +12,13 @@ export function HandoverForm({
   id,
   sheet,
   defaults,
+  canEmail,
 }: {
   kind: "delivery" | "return";
   id: string;
   sheet: LoanLine[];
   defaults: { at: string; by: string; note: string };
+  canEmail: boolean;
 }) {
   const [state, action] = useActionState<ActionResult, FormData>(kind === "delivery" ? recordDeliveryAction : recordReturnAction, null);
   return (
@@ -65,7 +67,24 @@ export function HandoverForm({
       <Field label="Observation">
         <Input name="note" defaultValue={defaults.note} />
       </Field>
-      {state && <Alert tone={state.ok ? "ok" : "danger"}>{state.message}</Alert>}
+      <label className="flex items-center gap-2.5 text-sm font-semibold text-ink-2">
+        <input type="checkbox" name="send" defaultChecked={canEmail} disabled={!canEmail} className="size-4 accent-[var(--accent)]" />
+        Envoyer la fiche à l&apos;école pour confirmation
+        {!canEmail && <span className="font-normal text-muted">(pas d&apos;adresse e-mail : faites confirmer sur place)</span>}
+      </label>
+      {state && (
+        <Alert tone={state.ok ? "ok" : "danger"}>
+          {state.message}
+          {state.link && (
+            <>
+              {" "}
+              <a href={state.link} target="_blank" rel="noopener" className="font-bold underline">
+                Mode test : ouvrir le lien
+              </a>
+            </>
+          )}
+        </Alert>
+      )}
       <SubmitButton>{kind === "delivery" ? "Enregistrer la remise" : "Enregistrer la reprise"}</SubmitButton>
     </form>
   );

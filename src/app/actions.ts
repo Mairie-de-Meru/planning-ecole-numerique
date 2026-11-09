@@ -260,3 +260,17 @@ export async function sendConventionAction(conventionId: string): Promise<Action
     return fail(e);
   }
 }
+
+/* ---------------- Fiche de prêt (lien) ---------------- */
+
+export async function acceptSheetAction(token: string, step: "delivery" | "return", input: { accepted: boolean; name: string; signatureImage?: string | null }): Promise<ActionResult> {
+  const { acceptSheetStep } = await import("@/lib/conventions");
+  const user = await currentUser();
+  try {
+    await acceptSheetStep(token, step, input, !!user?.admin);
+    revalidatePath(`/fiche/${token}`);
+    return { ok: true, message: step === "delivery" ? "Remise confirmée. Merci !" : "Reprise confirmée. Merci !" };
+  } catch (e) {
+    return fail(e);
+  }
+}

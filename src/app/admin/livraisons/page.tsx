@@ -7,6 +7,7 @@ import { deliveries } from "@/lib/deliveries";
 import { frLong, frRange, todayParis } from "@/lib/dates";
 import { Card, EmptyState, PageHeader, buttonClass, cx } from "@/components/ui";
 import { PrintButton } from "./print-button";
+import { SheetButtons } from "@/components/sheet-buttons";
 
 export const metadata = { title: "Livraisons" };
 
@@ -94,6 +95,20 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
                         )}
                         {convention?.status === "to_sign" && <div className="text-xs font-semibold text-warn">Convention à signer</div>}
                         {convention?.storageLocation && <div className="text-xs text-muted">Stockage : {convention.storageLocation}</div>}
+                        {convention && (convention.deliveredAt || convention.returnedAt) && (
+                          <div className="text-xs font-semibold">
+                            {(convention.returnedAt ? convention.returnAcceptedAt : convention.deliveryAcceptedAt) ? (
+                              <span className="text-ok">✓ Confirmée par l&apos;école</span>
+                            ) : (
+                              <span className="text-warn">À faire confirmer</span>
+                            )}
+                          </div>
+                        )}
+                        {convention && convention.status !== "cancelled" && (
+                          <div className="no-print mt-2">
+                            <SheetButtons conventionId={convention.id} canEmail={!!school.email} size="sm" />
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -9,7 +9,7 @@ import { Alert, Button, Input, Select, cx } from "./ui";
 export const SIGNER_TITLES = ["Directrice", "Directeur", "Directrice par intérim", "Directeur par intérim", "Faisant fonction de direction"];
 
 /** Zone de signature : dessin au doigt / à la souris, ou image glissée-déposée. Exporte un PNG. */
-function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
+export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [empty, setEmpty] = useState(true);

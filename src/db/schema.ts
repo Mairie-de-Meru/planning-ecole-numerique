@@ -231,6 +231,17 @@ export const conventions = pgTable("conventions", {
   returnedAt: date("returned_at"),
   returnedBy: text("returned_by"),
   returnNote: text("return_note"),
+  /** Acceptation de la fiche de prêt par l'école, à la remise puis à la reprise. */
+  deliveryAcceptedAt: timestamp("delivery_accepted_at", { withTimezone: true }),
+  deliveryAcceptedName: text("delivery_accepted_name"),
+  deliveryAcceptedMethod: text("delivery_accepted_method"), // sur place | en ligne
+  deliveryAcceptedSignature: text("delivery_accepted_signature"),
+  returnAcceptedAt: timestamp("return_accepted_at", { withTimezone: true }),
+  returnAcceptedName: text("return_accepted_name"),
+  returnAcceptedMethod: text("return_accepted_method"),
+  returnAcceptedSignature: text("return_accepted_signature"),
+  /** Lien de consultation/acceptation de la fiche (empreinte du jeton). */
+  sheetTokenHash: text("sheet_token_hash"),
   amendments: jsonb("amendments").notNull().default([]), // { at, text }[]
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
