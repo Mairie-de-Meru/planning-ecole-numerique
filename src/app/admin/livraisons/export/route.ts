@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const [period] = await db.select().from(schema.periods).where(eq(schema.periods.id, id));
   if (!period) return new Response("Période introuvable", { status: 404 });
   const rows = await deliveries(id);
-  const cell = (v: string) => `"${v.replace(/"/g, '""').replace(/\r?\n/g, ", ")}"`;
+  const cell = (v: string | null) => `"${(v ?? "").replace(/"/g, '""').replace(/\r?\n/g, ", ")}"`;
   const lines = [
     ["École", "Adresse", "Contact", "Téléphone", "E-mail", "Mallette", "Début", "Fin"].map(cell).join(";"),
     ...rows.map(({ item, school }) =>

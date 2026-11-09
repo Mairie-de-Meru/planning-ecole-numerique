@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Clock, Loader2, MailCheck, MapPin, Plus } from "lucide-react";
+import { ArrowRight, Check, Clock, FileText, Loader2, MailCheck, MapPin, Plus } from "lucide-react";
 import { Modal } from "./client";
 import { Thumb } from "./thumb";
 import { Alert, Badge, Button, Select, cx } from "./ui";
 import { frLong, frRange } from "@/lib/dates";
+import { SignatureForm } from "./signature-form";
 import {
+  conventionPreviewAction,
   bookAction,
   cancelAction,
   moveAction,
@@ -27,7 +29,15 @@ export type GridPeriod = {
   state: "past" | "current" | "upcoming";
 };
 export type GridItem = { id: string; name: string; description: string; contents: string; active: boolean; color: string; photoUrl: string | null };
-export type GridSlot = { reservationId: string; status: "pending" | "confirmed"; mine: boolean; schoolName?: string; schoolId?: string };
+export type GridSlot = {
+  reservationId: string;
+  status: "pending" | "confirmed";
+  mine: boolean;
+  schoolName?: string;
+  schoolId?: string;
+  conventionId?: string | null;
+  conventionStatus?: "to_sign" | "signed" | "cancelled" | null;
+};
 
 type Props = {
   mode: "school" | "admin";
@@ -36,7 +46,7 @@ type Props = {
   slots: Record<string, GridSlot>;
   today: string;
   school?: { name: string; address: string };
-  schools?: { id: string; name: string; email: string }[];
+  schools?: { id: string; name: string; email: string | null }[];
 };
 
 type Dialog =
@@ -230,6 +240,7 @@ export function Planning(props: Props) {
 
       <Modal
         open={dialog?.kind === "book"}
+        size="lg"
         onClose={() => setDialog(null)}
         color={dialog?.item.color}
         title={dialog?.kind === "book" ? (mode === "admin" ? `Attribuer « ${dialog.item.name} »` : `Réserver « ${dialog.item.name} »`) : ""}
@@ -367,21 +378,29 @@ function useAction() {
 }
 
 function BookDialog({ item, period, school, onDone }: { item: GridItem; period: GridPeriod; school: { name: string; address: string }; onDone: () => void }) {
-  const { pending, result, run } = useAction();
-  if (result?.ok)
+  const [step, setStep] = useState<"summary" | "convention">("summary");
+  const [preview, setPreview] = useState<Awaited<ReturnType<typeof conventionPreviewAction>> | undefined>(undefined);
+  const [done, setDone] = useState<ActionResult>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (step === "convention" && preview === undefined) conventionPreviewAction(item.id, period.id).then(setPreview);
+  }, [step, preview, item.id, period.id]);
+
+  if (done?.ok)
     return (
       <div className="text-center">
         <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-accent-soft text-accent">
           <MailCheck className="size-6" />
         </div>
-        <p className="font-extrabold">Confirmez votre réservation par e-mail</p>
+        <p className="font-extrabold">Convention acceptée : confirmez par e-mail</p>
         <p className="mt-2 text-sm text-muted">
-          Un lien de confirmation a été envoyé à <span className="font-semibold text-ink">{result.message}</span>. La mallette vous est réservée en attendant.
+          Un lien de confirmation a été envoyé à <span className="font-semibold text-ink">{done.message}</span>. La mallette vous est réservée en attendant.
         </p>
-        {result.link && (
+        {done.link && (
           <Alert tone="warn" className="mt-4 text-left">
             <strong>Mode test</strong> —{" "}
-            <a className="font-semibold underline" href={result.link}>
+            <a className="font-semibold underline" href={done.link}>
               ouvrir le lien de confirmation
             </a>
           </Alert>
@@ -391,6 +410,28 @@ function BookDialog({ item, period, school, onDone }: { item: GridItem; period: 
         </Button>
       </div>
     );
+
+  if (step === "convention")
+    return (
+      <SignatureForm
+        html={preview?.html ?? null}
+        defaults={{ signerName: preview?.signerName ?? "", signerTitle: preview?.signerTitle ?? "" }}
+        key={preview ? "ready" : "loading"}
+        submitLabel="Signer et réserver"
+        footer={
+          <Button type="button" variant="ghost" onClick={() => setStep("summary")}>
+            Retour
+          </Button>
+        }
+        onSubmit={async (sign) => {
+          const r = await bookAction(item.id, period.id, sign);
+          if (r?.ok) setDone(r);
+          router.refresh();
+          return r;
+        }}
+      />
+    );
+
   return (
     <div className="space-y-5">
       <div className="flex gap-4">
@@ -411,26 +452,26 @@ function BookDialog({ item, period, school, onDone }: { item: GridItem; period: 
                 {school.name}
                 <br />
                 <span className="font-normal text-muted">{school.address}</span>
+                <br />
+                <span className="font-normal text-muted">Livraison et reprise par le service informatique</span>
               </span>
             </span>,
           ],
         ]}
       />
-      {result && !result.ok && <Alert tone="danger">{result.message}</Alert>}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button variant="ghost" onClick={onDone}>
           Annuler
         </Button>
-        <Button disabled={pending} onClick={() => run(() => bookAction(item.id, period.id))}>
-          {pending && <Loader2 className="size-4 animate-spin" />} Réserver cette mallette
+        <Button onClick={() => setStep("convention")}>
+          Lire la convention et réserver <ArrowRight className="size-4" />
         </Button>
       </div>
-      <p className="text-center text-xs text-muted">Vous recevrez un e-mail pour confirmer la réservation.</p>
     </div>
   );
 }
 
-function AdminCreateDialog({ item, period, schools, onDone }: { item: GridItem; period: GridPeriod; schools: { id: string; name: string; email: string }[]; onDone: () => void }) {
+function AdminCreateDialog({ item, period, schools, onDone }: { item: GridItem; period: GridPeriod; schools: { id: string; name: string; email: string | null }[]; onDone: () => void }) {
   const { pending, result, run } = useAction();
   const [schoolId, setSchoolId] = useState("");
   if (result?.ok)
@@ -567,7 +608,23 @@ function ManageDialog({ mode, item, period, slot, items, onDone }: { mode: Props
       <div>
         {slot.status === "pending" ? <Badge tone="warn"><Clock className="size-3" /> En attente de confirmation</Badge> : <Badge tone="ok"><Check className="size-3" /> Confirmée</Badge>}
       </div>
-      <Facts rows={[...(mode === "admin" ? ([["École", slot.schoolName]] as [string, React.ReactNode][]) : []), ...periodRows(period)]} />
+      <Facts
+        rows={[
+          ...(mode === "admin" ? ([["École", slot.schoolName]] as [string, React.ReactNode][]) : []),
+          ...periodRows(period),
+          ...(slot.conventionId
+            ? ([
+                [
+                  "Convention",
+                  <a key="c" href={`/conventions/${slot.conventionId}`} className="inline-flex items-center gap-2 text-accent hover:underline">
+                    <FileText className="size-4" />
+                    {slot.conventionStatus === "signed" ? "Signée — voir" : "À signer"}
+                  </a>,
+                ],
+              ] as [string, React.ReactNode][])
+            : []),
+        ]}
+      />
       {!canChange && <Alert>La période a commencé : pour toute modification, contactez le gestionnaire.</Alert>}
       {result && !result.ok && <Alert tone="danger">{result.message}</Alert>}
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">

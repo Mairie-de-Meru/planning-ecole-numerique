@@ -1,5 +1,5 @@
 /**
- * Données de démonstration : mallettes, périodes zone B, liste blanche et écoles fictives.
+ * Données initiales : mallettes, périodes zone B, écoles maternelles de Méru et liste blanche de démonstration.
  * Usage : npm run db:seed
  * Les dates 2026-2027 sont saisies à la main (à vérifier) : utilisez « Lire les dates maintenant »
  * dans Admin → Périodes pour les remplacer par celles de service-public.gouv.fr.
@@ -11,37 +11,49 @@ async function main() {
   const sql = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
   await sql`insert into settings (id) values (1) on conflict do nothing`;
 
-  const items: [string, string, string, string | null][] = [
+  // Matériel en circulation : 2 mallettes de tablettes et 1 sac robotique.
+  // Inventaires à compléter depuis les conventions papier (Admin → Mallettes).
+  const tabletInventory = [
+    "1 mallette de transport et de recharge à roulettes, avec sa clé",
+    "Tablettes numériques avec coque de protection",
+    "1 câble d'alimentation de la mallette",
+  ].join("\n");
+  const items: [string, string, string, string, string | null, string][] = [
     [
-      "Mallette tablettes",
-      "16 tablettes et leur chariot de recharge",
-      "16 tablettes 10 pouces avec coques, chariot mobile de rangement et de recharge sécurisé, guide d'utilisation.",
+      "Mallette tablettes n°1",
+      "Tablettes numériques et leur mallette de recharge",
+      "Mallette à roulettes qui transporte, range et recharge les tablettes de la classe.",
+      tabletInventory,
       "/mallettes/tablettes.webp",
+      "encre",
     ],
     [
-      "Robots de sol",
-      "6 robots programmables · cycles 1 et 2",
-      "6 robots transparents programmables par boutons, station de recharge, tapis quadrillés, fiches défis.",
-      "/mallettes/robots.webp",
+      "Mallette tablettes n°2",
+      "Tablettes numériques et leur mallette de recharge",
+      "Mallette à roulettes qui transporte, range et recharge les tablettes de la classe.",
+      tabletInventory,
+      "/mallettes/tablettes.webp",
+      "lagon",
     ],
     [
-      "Programmation tactile",
-      "Coder sans écran avec des cartes",
-      "2 lecteurs de cartes et 120 cartes (flèches, pause, répétition), à utiliser avec les robots de sol.",
-      "/mallettes/programmation.webp",
+      "Sac robotique",
+      "Robots, lecteur de programmation et tapis de jeu",
+      "Un sac de sport noir qui réunit les robots de sol, la tablette (lecteur) de programmation avec ses cartes plastifiées d'instructions pour diriger le robot, et les tapis de jeu.",
+      [
+        "1 sac de transport noir",
+        "Robots de sol programmables et leurs câbles de recharge",
+        "1 lecteur de cartes de programmation",
+        "1 jeu de cartes plastifiées d'instructions (avancer, reculer, tourner, pause…)",
+        "Tapis de jeu quadrillés",
+      ].join("\n"),
+      "/mallettes/sac-robotique.webp",
+      "tomate",
     ],
-    [
-      "Solides géométriques",
-      "Cartes et solides · cycles 2 et 3",
-      "25 grandes cartes illustrées (cubes, pavés, prismes, cylindres, cônes, sphères) et solides à manipuler.",
-      "/mallettes/solides.webp",
-    ],
-    ["Mallette lecture CP", "Albums et jeux de lecture", "30 albums jeunesse, jeux de syllabes, étiquettes-mots.", null],
   ];
   let order = 0;
-  for (const [name, description, contents, photo] of items) {
-    await sql`insert into items (name, description, contents, photo_url, sort_order)
-              select ${name}, ${description}, ${contents}, ${photo}, ${order++}
+  for (const [name, description, contents, inventory, photo, color] of items) {
+    await sql`insert into items (name, description, contents, inventory, photo_url, color, sort_order)
+              select ${name}, ${description}, ${contents}, ${inventory}, ${photo}, ${color}, ${order++}
               where not exists (select 1 from items where name = ${name})`;
   }
 
@@ -65,25 +77,24 @@ async function main() {
 
   for (const p of ["@ecole-demo.fr"]) await sql`insert into allowlist (pattern) values (${p}) on conflict do nothing`;
 
-  const schools = [
-    ["jules-ferry@ecole-demo.fr", "École élémentaire Jules Ferry", "12 rue des Écoles\n60110 Méru", "Mme Martin", "03 44 00 00 01"],
-    ["les-tilleuls@ecole-demo.fr", "École primaire Les Tilleuls", "4 allée des Tilleuls\n60110 Méru", "M. Bernard", "03 44 00 00 02"],
+  // Écoles maternelles de Méru (source : ville-meru.fr/nos-ecoles, novembre 2026).
+  // Sans adresse e-mail : chaque école se rattache à sa fiche à sa première connexion.
+  const schools: [string, string, string, string, string][] = [
+    ["École maternelle Bellonte", "1 rue Bellonte\n60110 Méru", "Estelle MENDES", "Directrice", "03 44 52 39 25"],
+    ["École maternelle Gambetta", "1 rue Camille Desmoulins\n60110 Méru", "Coralinda RIOJA", "Directrice", "03 44 52 34 50"],
+    ["École maternelle Jean Macé", "13 rue Salentin\n60110 Méru", "Marie-Renée PELARD", "Directrice", "03 44 52 35 68"],
+    ["École maternelle Jean Moulin", "1 rue Jean Moulin\n60110 Méru", "Christine POIRION", "Directrice", "03 44 52 34 44"],
+    ["École maternelle Jules Verne", "2 avenue Molière\n60110 Méru", "Stéphanie VERDELET", "Directrice", "03 44 52 36 47"],
+    ["École maternelle Pasteur", "2 boulevard Pablo Picasso\n60110 Méru", "M. BOSSER", "Directeur", "03 44 52 35 66"],
   ];
-  for (const [email, name, address, contact, phone] of schools) {
-    await sql`insert into schools (email, name, address, contact_name, phone) values (${email}, ${name}, ${address}, ${contact}, ${phone})
-              on conflict (email) do nothing`;
+  for (const [name, address, director, title, phone] of schools) {
+    await sql`insert into schools (name, address, director_name, director_title, phone)
+              select ${name}, ${address}, ${director}, ${title}, ${phone}
+              where not exists (select 1 from schools where name = ${name})`;
   }
 
-  // Une réservation confirmée de démonstration
-  await sql`insert into reservations (item_id, period_id, school_id, status, confirmed_at)
-            select i.id, p.id, s.id, 'confirmed', now()
-            from items i, periods p, schools s
-            where i.name = 'Robots de sol' and p.school_year = '2026-2027' and p.position = 3
-              and s.email = 'les-tilleuls@ecole-demo.fr'
-            on conflict do nothing`;
-
   await sql.end();
-  console.log("Données de démonstration insérées.");
+  console.log("Données initiales insérées.");
 }
 
 main().catch((e) => {

@@ -15,11 +15,14 @@ function SchoolFields({ s }: { s?: School }) {
       {s && <input type="hidden" name="id" value={s.id} />}
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Nom de l'école"><Input name="name" required defaultValue={s?.name} /></Field>
-        <Field label="E-mail (identifiant de connexion)"><Input name="email" type="email" required defaultValue={s?.email} /></Field>
+        <Field label="E-mail de connexion" hint="Laissez vide : l'école se rattachera à cette fiche à sa première connexion.">
+          <Input name="email" type="email" defaultValue={s?.email ?? ""} />
+        </Field>
       </div>
       <Field label="Adresse de livraison"><Textarea name="address" defaultValue={s?.address} /></Field>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Contact"><Input name="contactName" defaultValue={s?.contactName} /></Field>
+      <div className="grid gap-5 sm:grid-cols-3">
+        <Field label="Direction (signataire)"><Input name="directorName" defaultValue={s?.directorName} /></Field>
+        <Field label="Fonction"><Input name="directorTitle" defaultValue={s?.directorTitle ?? "Directrice"} /></Field>
         <Field label="Téléphone"><Input name="phone" defaultValue={s?.phone} /></Field>
       </div>
     </>
@@ -74,7 +77,8 @@ export default async function SchoolsPage() {
               summary={
                 <div className="flex flex-wrap items-baseline gap-x-3">
                   <span className="font-semibold">{s.name || <em className="font-normal text-muted">Fiche non remplie</em>}</span>
-                  <span className="text-sm text-muted">{s.email}</span>
+                  <span className="text-sm text-muted">{s.email ?? "pas encore rattachée"}</span>
+                  {s.directorName && <span className="text-sm text-muted">· {s.directorTitle} : {s.directorName}</span>}
                 </div>
               }
             >

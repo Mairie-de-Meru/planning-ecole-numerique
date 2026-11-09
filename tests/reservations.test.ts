@@ -20,9 +20,10 @@ let schoolA = "";
 let schoolB = "";
 
 const tokenOf = (url: string) => url.split("/confirmer/")[1];
+const sign = { accepted: true, signerName: "Mme Test", signerTitle: "Directrice", emailCopy: false };
 
 beforeEach(async () => {
-  await db.execute(sql`truncate reservations, audit_log, mail_log, periods, items, schools, settings, admins cascade`);
+  await db.execute(sql`truncate conventions, convention_templates, reservations, audit_log, mail_log, periods, items, schools, settings, admins cascade`);
   await updateSettings({ zone: "B", confirmTtlMinutes: 30, maxPerSchoolPerPeriod: 0, notifyAdmin: true });
   await db.insert(schema.admins).values({ email: "admin@test.fr" });
   [{ id: itemId }, { id: item2 }] = await db
@@ -54,7 +55,7 @@ describe("premier réservé, premier servi", () => {
       .values(Array.from({ length: 20 }, (_, i) => ({ email: `s${i}@ecole.fr`, name: `S${i}`, address: "x" })))
       .returning();
     const results = await Promise.allSettled(
-      schools.map((s) => bookReservation({ schoolId: s.id, itemId, periodId: p1, actorEmail: s.email })),
+      schools.map((s) => bookReservation({ schoolId: s.id, itemId, periodId: p1, actorEmail: s.email!, sign })),
     );
     const ok = results.filter((r) => r.status === "fulfilled");
     const ko = results.filter((r) => r.status === "rejected") as PromiseRejectedResult[];
@@ -63,11 +64,11 @@ describe("premier réservé, premier servi", () => {
   });
 
   it("parcours complet : en attente → confirmée, avec e-mails", async () => {
-    const { confirmUrl } = await bookReservation({ schoolId: schoolA, itemId, periodId: p1, actorEmail: "a@ecole.fr" });
+    const { confirmUrl } = await bookReservation({ schoolId: schoolA, itemId, periodId: p1, actorEmail: "a@ecole.fr", sign });
     let plan = await getPlanning({ zone: "B", schoolYear: "2030-2031" });
     expect(plan.slots.get(`${itemId}:${p1}`)?.status).toBe("pending");
     // Une autre école ne peut pas prendre le créneau en attente.
-    await expect(bookReservation({ schoolId: schoolB, itemId, periodId: p1, actorEmail: "b@ecole.fr" })).rejects.toThrow(/Trop tard/);
+    await expect(bookReservation({ schoolId: schoolB, itemId, periodId: p1, actorEmail: "b@ecole.fr", sign })).rejects.toThrow(/Trop tard/);
     await confirmReservation(tokenOf(confirmUrl));
     plan = await getPlanning({ zone: "B", schoolYear: "2030-2031" });
     expect(plan.slots.get(`${itemId}:${p1}`)?.status).toBe("confirmed");
@@ -84,34 +85,34 @@ describe("premier réservé, premier servi", () => {
 
   it("notification admin désactivable", async () => {
     await updateSettings({ notifyAdmin: false });
-    const { confirmUrl } = await bookReservation({ schoolId: schoolA, itemId, periodId: p1, actorEmail: "a@ecole.fr" });
+    const { confirmUrl } = await bookReservation({ schoolId: schoolA, itemId, periodId: p1, actorEmail: "a@ecole.fr", sign });
     await confirmReservation(tokenOf(confirmUrl));
     const mails = await db.select().from(schema.mailLog);
     expect(mails.some((m) => m.subject.startsWith("[Admin]"))).toBe(false);
   });
 
   it("une réservation non confirmée à temps libère le créneau", async () => {
-    const { confirmUrl, reservation } = await bookReservation({ schoolId: schoolA, itemId, periodId: p1, actorEmail: "a@ecole.fr" });
+    const { confirmUrl, reservation } = await bookReservation({ schoolId: schoolA, itemId, periodId: p1, actorEmail: "a@ecole.fr", sign });
     await db.update(schema.reservations).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.reservations.id, reservation.id));
     await expect(confirmReservation(tokenOf(confirmUrl))).rejects.toThrow(/délai/);
-    await bookReservation({ schoolId: schoolB, itemId, periodId: p1, actorEmail: "b@ecole.fr" });
+    await bookReservation({ schoolId: schoolB, itemId, periodId: p1, actorEmail: "b@ecole.fr", sign });
   });
 
   it("refuse une période passée", async () => {
-    await expect(bookReservation({ schoolId: schoolA, itemId, periodId: pPast, actorEmail: "a@ecole.fr" })).rejects.toThrow(/terminée/);
+    await expect(bookReservation({ schoolId: schoolA, itemId, periodId: pPast, actorEmail: "a@ecole.fr", sign })).rejects.toThrow(/terminée/);
   });
 
   it("plafond par école et par période (réglage admin)", async () => {
     await updateSettings({ maxPerSchoolPerPeriod: 1 });
-    await bookReservation({ schoolId: schoolA, itemId, periodId: p1, actorEmail: "a@ecole.fr" });
-    await expect(bookReservation({ schoolId: schoolA, itemId: item2, periodId: p1, actorEmail: "a@ecole.fr" })).rejects.toThrow(/déjà une mallette/);
-    await bookReservation({ schoolId: schoolA, itemId: item2, periodId: p2, actorEmail: "a@ecole.fr" });
+    await bookReservation({ schoolId: schoolA, itemId, periodId: p1, actorEmail: "a@ecole.fr", sign });
+    await expect(bookReservation({ schoolId: schoolA, itemId: item2, periodId: p1, actorEmail: "a@ecole.fr", sign })).rejects.toThrow(/déjà une mallette/);
+    await bookReservation({ schoolId: schoolA, itemId: item2, periodId: p2, actorEmail: "a@ecole.fr", sign });
   });
 });
 
 describe("décalage et annulation", () => {
   async function confirmed(schoolId: string, email: string, periodId: string) {
-    const { confirmUrl, reservation } = await bookReservation({ schoolId, itemId, periodId, actorEmail: email });
+    const { confirmUrl, reservation } = await bookReservation({ schoolId, itemId, periodId, actorEmail: email, sign });
     await confirmReservation(tokenOf(confirmUrl));
     return reservation.id;
   }
@@ -144,7 +145,7 @@ describe("décalage et annulation", () => {
   it("annulation : le créneau redevient libre", async () => {
     const a = await confirmed(schoolA, "a@ecole.fr", p1);
     await cancelReservation({ reservationId: a, actor: { type: "school", schoolId: schoolA, email: "a@ecole.fr" } });
-    await bookReservation({ schoolId: schoolB, itemId, periodId: p1, actorEmail: "b@ecole.fr" });
+    await bookReservation({ schoolId: schoolB, itemId, periodId: p1, actorEmail: "b@ecole.fr", sign });
   });
 
   it("l'admin peut changer de valise et de période", async () => {

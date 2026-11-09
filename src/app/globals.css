@@ -145,3 +145,15 @@ dialog[open] {
   .no-print { display: none !important; }
   body { background: white; }
 }
+
+/* Texte de convention */
+.convention { font-size: 14px; line-height: 1.6; }
+.convention h1 { font-size: 20px; font-weight: 800; line-height: 1.25; margin: 0 0 14px; }
+.convention h1::after { content: ""; display: block; width: 44px; height: 3px; margin-top: 10px; border-radius: 2px; background: var(--margin); }
+.convention h2 { font-size: 15px; font-weight: 800; margin: 18px 0 4px; }
+.convention p { margin: 0 0 6px; }
+.convention ul { margin: 2px 0 8px; padding-left: 20px; list-style: disc; }
+.convention li { margin: 2px 0; }
+.convention li::marker { color: var(--accent); }
+.convention strong { font-weight: 800; }
+.convention mark.field { background: var(--highlight); color: inherit; border-radius: 4px; padding: 0 3px; font-size: 0.9em; font-family: ui-monospace, monospace; }

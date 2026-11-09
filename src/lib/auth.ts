@@ -77,19 +77,9 @@ export async function consumeLoginToken(token: string): Promise<string | null> {
     .returning();
   if (!row) return null;
   const email = row.email;
-  // Crée la fiche école à la première connexion (sauf admin pur).
-  if (!(await isAdmin(email)) || (await isAllowedNonAdmin(email))) {
-    await db.insert(schema.schools).values({ email }).onConflictDoNothing();
-  }
   const jar = await cookies();
   jar.set(SESSION_COOKIE, await signSession(email), sessionCookieOptions);
   return email;
-}
-
-async function isAllowedNonAdmin(email: string) {
-  const rows = await db.select({ pattern: schema.allowlist.pattern }).from(schema.allowlist);
-  const { matchesPattern } = await import("./allowlist");
-  return rows.some((r) => matchesPattern(email, r.pattern));
 }
 
 export async function logout() {

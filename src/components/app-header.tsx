@@ -12,6 +12,7 @@ export function AppHeader({ user, appName, section }: { user: CurrentUser; appNa
       ? [
           { href: "/admin", label: "Planning" },
           { href: "/admin/livraisons", label: "Livraisons" },
+          { href: "/admin/conventions", label: "Conventions" },
           { href: "/admin/mallettes", label: "Mallettes" },
           { href: "/admin/periodes", label: "Périodes" },
           { href: "/admin/ecoles", label: "Écoles" },

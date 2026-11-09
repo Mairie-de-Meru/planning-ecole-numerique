@@ -5,8 +5,20 @@ import { periodState, todayParis } from "./dates";
 import { icsEvent, periodFacts, renderMail, sendMail } from "./mail";
 import { adminEmails, appUrl, getSettings } from "./settings";
 import { hashToken, newToken } from "./tokens";
+import { BookingError } from "./errors";
+import {
+  cancelConventions,
+  conventionAttachment,
+  conventionNumber,
+  createConvention,
+  formatStamp,
+  getConventionByReservation,
+  updateConventionAfterMove,
+  validateSign,
+  type SignInput,
+} from "./conventions";
 
-export class BookingError extends Error {}
+export { BookingError };
 
 export type Actor = { type: "school"; schoolId: string; email: string } | { type: "admin"; email: string };
 
@@ -28,6 +40,7 @@ export async function expireStalePending(): Promise<number> {
     .set({ status: "expired", confirmTokenHash: null, updatedAt: new Date() })
     .where(and(eq(schema.reservations.status, "pending"), lt(schema.reservations.expiresAt, new Date())))
     .returning({ id: schema.reservations.id });
+  await cancelConventions(rows.map((r) => r.id));
   return rows.length;
 }
 
@@ -73,7 +86,15 @@ async function checkLimit(tx: Parameters<Parameters<typeof db.transaction>[0]>[0
 /* Réservation par une école : en attente puis confirmation par e-mail */
 /* ------------------------------------------------------------------ */
 
-export async function bookReservation(input: { schoolId: string; itemId: string; periodId: string; actorEmail: string }) {
+export async function bookReservation(input: {
+  schoolId: string;
+  itemId: string;
+  periodId: string;
+  actorEmail: string;
+  sign: SignInput;
+  ip?: string | null;
+}) {
+  validateSign(input.sign);
   const settings = await getSettings();
   const today = todayParis();
   const { token, hash } = newToken();
@@ -101,6 +122,8 @@ export async function bookReservation(input: { schoolId: string; itemId: string;
           expiresAt: new Date(Date.now() + settings.confirmTtlMinutes * 60_000),
         })
         .returning();
+      // La convention est acceptée en même temps que la réservation.
+      await createConvention(tx, { reservationId: r.id, sign: { ...input.sign, email: input.actorEmail, ip: input.ip } });
       return r;
     });
   } catch (e) {
@@ -114,16 +137,20 @@ export async function bookReservation(input: { schoolId: string; itemId: string;
     appName: settings.appName,
     title: "Confirmez votre réservation",
     blocks: [
-      { kind: "p", text: `Bonjour, vous avez demandé à réserver « ${full.item.name} ». Pour valider la réservation, cliquez sur le bouton ci-dessous.` },
+      {
+        kind: "p",
+        text: `Bonjour, vous avez demandé à réserver « ${full.item.name} » et accepté la convention de prêt. Pour valider la réservation, cliquez sur le bouton ci-dessous.`,
+      },
       { kind: "facts", rows: [["Mallette", full.item.name], ...periodFacts(full.period), ["École", full.school.name]] },
       { kind: "note", text: `Sans confirmation dans les ${settings.confirmTtlMinutes} minutes, la mallette sera de nouveau proposée aux autres écoles.` },
     ],
     button: { label: "Confirmer la réservation", url },
   });
   try {
-    await sendMail({ to: full.school.email, subject: `À confirmer : ${full.item.name} — ${full.period.label}`, html, text });
+    await sendMail({ to: full.school.email ?? [], subject: `À confirmer : ${full.item.name} — ${full.period.label}`, html, text });
   } catch {
     await db.update(schema.reservations).set({ status: "cancelled", confirmTokenHash: null }).where(eq(schema.reservations.id, reservation.id));
+    await cancelConventions([reservation.id]);
     throw new BookingError("L'e-mail de confirmation n'a pas pu être envoyé. Réessayez dans un instant.");
   }
   await audit({ type: "school", schoolId: input.schoolId, email: input.actorEmail }, "réservation demandée", reservation.id);
@@ -154,13 +181,22 @@ export async function confirmReservation(token: string) {
     .where(and(eq(schema.reservations.id, full.r.id), eq(schema.reservations.status, "pending")))
     .returning();
   if (!r) throw new BookingError("Cette réservation n'est plus en attente de confirmation.");
-  await audit({ type: "school", schoolId: full.school.id, email: full.school.email }, "réservation confirmée", r.id);
+  await audit({ type: "school", schoolId: full.school.id, email: full.school.email ?? "" }, "réservation confirmée", r.id);
   await notifyConfirmed(full.item, full.period, full.school, r.id, false);
   return { ...full, r };
 }
 
 async function notifyConfirmed(item: Item, period: Period, school: School, reservationId: string, byAdmin: boolean) {
   const settings = await getSettings();
+  const conv = await getConventionByReservation(reservationId);
+  const convRows: [string, string][] = conv
+    ? [["Convention", `n° ${conventionNumber(conv.convention)}${conv.convention.signedAt ? ` — acceptée le ${formatStamp(conv.convention.signedAt)}` : ""}`]]
+    : [];
+  const attachments = [];
+  if (conv?.convention.emailCopy) {
+    const pdf = await conventionAttachment(conv.convention.id);
+    if (pdf) attachments.push(pdf);
+  }
   const { html, text } = renderMail({
     appName: settings.appName,
     title: "Votre réservation est faite",
@@ -171,17 +207,22 @@ async function notifyConfirmed(item: Item, period: Period, school: School, reser
           ? `Le gestionnaire a réservé « ${item.name} » pour votre école.`
           : `C'est confirmé : « ${item.name} » est réservée pour votre école.`,
       },
-      { kind: "facts", rows: [["Mallette", item.name], ...periodFacts(period), ["Livraison", school.address || "—"]] },
-      { kind: "p", text: "La mallette sera livrée à l'adresse ci-dessus en début de période. Vous pouvez décaler ou annuler la réservation depuis « Mes réservations »." },
+      { kind: "facts", rows: [["Mallette", item.name], ...periodFacts(period), ["Livraison", school.address || "—"], ...convRows] },
+      {
+        kind: "p",
+        text: "La mallette sera livrée et reprise à l'école par le service informatique. Vous pouvez décaler ou annuler la réservation depuis « Mes réservations ».",
+      },
+      ...(attachments.length ? [{ kind: "note" as const, text: "La convention de prêt est jointe à cet e-mail (PDF)." }] : []),
     ],
     button: { label: "Voir mes réservations", url: `${appUrl()}/reservations` },
   });
   await sendMail({
-    to: school.email,
+    to: school.email ?? [],
     subject: `Réservation confirmée : ${item.name} — ${period.label}`,
     html,
     text,
     attachments: [
+      ...attachments,
       icsEvent({
         uid: `${reservationId}@mallettes`,
         title: `Mallette : ${item.name}`,
@@ -192,10 +233,11 @@ async function notifyConfirmed(item: Item, period: Period, school: School, reser
     ],
   }).catch((e) => console.error("mail", e));
   await notifyAdmins(`Nouvelle réservation : ${item.name}`, [
-    ["École", school.name || school.email],
+    ["École", school.name || school.email || "—"],
     ["Mallette", item.name],
     ...periodFacts(period),
     ["Livraison", school.address || "—"],
+    ...convRows,
   ]);
 }
 
@@ -253,6 +295,10 @@ export async function moveReservation(input: { reservationId: string; periodId: 
     throw e;
   }
   const after = (await loadFull(before.r.id))!;
+  await updateConventionAfterMove(
+    before.r.id,
+    `${actor.type === "admin" ? "Modifiée par le gestionnaire" : "Décalée par l'école"} : ${before.item.name}, période ${before.period.position} (${before.period.schoolYear}) → ${after.item.name}, période ${after.period.position} (${after.period.schoolYear}).`,
+  );
   await audit(actor, "réservation décalée", before.r.id, {
     from: { period: before.period.label, year: before.period.schoolYear, item: before.item.name },
     to: { period: after.period.label, year: after.period.schoolYear, item: after.item.name },
@@ -270,7 +316,7 @@ export async function moveReservation(input: { reservationId: string; periodId: 
       button: { label: "Voir mes réservations", url: `${appUrl()}/reservations` },
     });
     await sendMail({
-      to: after.school.email,
+      to: after.school.email ?? [],
       subject: `Réservation décalée : ${after.item.name} — ${after.period.label}`,
       html,
       text,
@@ -280,7 +326,7 @@ export async function moveReservation(input: { reservationId: string; periodId: 
     }).catch((e) => console.error("mail", e));
     if (actor.type === "school")
       await notifyAdmins(`Réservation décalée : ${after.item.name}`, [
-        ["École", after.school.name || after.school.email],
+        ["École", after.school.name || after.school.email || "—"],
         ["Mallette", after.item.name],
         ["Avant", `${before.period.label} (${before.period.schoolYear})`],
         ["Après", `${after.period.label} (${after.period.schoolYear})`],
@@ -304,6 +350,7 @@ export async function cancelReservation(input: { reservationId: string; actor: A
     .update(schema.reservations)
     .set({ status: "cancelled", confirmTokenHash: null, updatedAt: new Date() })
     .where(eq(schema.reservations.id, full.r.id));
+  await cancelConventions([full.r.id]);
   await audit(actor, "réservation annulée", full.r.id);
 
   if (full.r.status === "confirmed") {
@@ -315,10 +362,10 @@ export async function cancelReservation(input: { reservationId: string; actor: A
         { kind: "facts", rows: [["Mallette", full.item.name], ...periodFacts(full.period)] },
       ],
     });
-    await sendMail({ to: full.school.email, subject: `Réservation annulée : ${full.item.name}`, html, text }).catch((e) => console.error("mail", e));
+    await sendMail({ to: full.school.email ?? [], subject: `Réservation annulée : ${full.item.name}`, html, text }).catch((e) => console.error("mail", e));
     if (actor.type === "school")
       await notifyAdmins(`Réservation annulée : ${full.item.name}`, [
-        ["École", full.school.name || full.school.email],
+        ["École", full.school.name || full.school.email || "—"],
         ["Mallette", full.item.name],
         ...periodFacts(full.period),
       ]);
@@ -343,7 +390,7 @@ export async function resendConfirmation(input: { reservationId: string; schoolI
     blocks: [{ kind: "facts", rows: [["Mallette", full.item.name], ...periodFacts(full.period)] }],
     button: { label: "Confirmer la réservation", url },
   });
-  await sendMail({ to: full.school.email, subject: `À confirmer : ${full.item.name} — ${full.period.label}`, html, text });
+  await sendMail({ to: full.school.email ?? [], subject: `À confirmer : ${full.item.name} — ${full.period.label}`, html, text });
   return { confirmUrl: url };
 }
 
@@ -351,11 +398,17 @@ export async function resendConfirmation(input: { reservationId: string; schoolI
 export async function adminCreateReservation(input: { schoolId: string; itemId: string; periodId: string; adminEmail: string }) {
   await expireStalePending();
   let r: Reservation;
+  let conventionId: string;
   try {
-    [r] = await db
-      .insert(schema.reservations)
-      .values({ itemId: input.itemId, periodId: input.periodId, schoolId: input.schoolId, status: "confirmed", confirmedAt: new Date() })
-      .returning();
+    ({ r, conventionId } = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(schema.reservations)
+        .values({ itemId: input.itemId, periodId: input.periodId, schoolId: input.schoolId, status: "confirmed", confirmedAt: new Date() })
+        .returning();
+      // Convention pré-remplie, à signer en ligne par la direction de l'école.
+      const c = await createConvention(tx, { reservationId: row.id, sign: null });
+      return { r: row, conventionId: c.id };
+    }));
   } catch (e) {
     if (isUniqueViolation(e)) throw new BookingError("Cette mallette est déjà réservée sur cette période.");
     throw e;
@@ -365,16 +418,16 @@ export async function adminCreateReservation(input: { schoolId: string; itemId: 
   const settings = await getSettings();
   const { html, text } = renderMail({
     appName: settings.appName,
-    title: "Votre réservation est faite",
+    title: "Une mallette est réservée pour votre école",
     blocks: [
-      { kind: "p", text: `Le gestionnaire a réservé « ${full.item.name} » pour votre école.` },
+      { kind: "p", text: `Le gestionnaire a réservé « ${full.item.name} » pour votre école. Il reste à accepter la convention de prêt en ligne.` },
       { kind: "facts", rows: [["Mallette", full.item.name], ...periodFacts(full.period), ["Livraison", full.school.address || "—"]] },
     ],
-    button: { label: "Voir mes réservations", url: `${appUrl()}/reservations` },
+    button: { label: "Lire et signer la convention", url: `${appUrl()}/conventions/${conventionId}` },
   });
   await sendMail({
-    to: full.school.email,
-    subject: `Réservation confirmée : ${full.item.name} — ${full.period.label}`,
+    to: full.school.email ?? [],
+    subject: `Convention à signer : ${full.item.name} — ${full.period.label}`,
     html,
     text,
     attachments: [icsEvent({ uid: `${r.id}@mallettes`, title: `Mallette : ${full.item.name}`, description: full.period.label, start: full.period.startDate, end: full.period.endDate })],
@@ -391,6 +444,8 @@ export type SlotInfo = {
   status: "pending" | "confirmed";
   schoolId: string;
   schoolName: string;
+  conventionId: string | null;
+  conventionStatus: "to_sign" | "signed" | "cancelled" | null;
 };
 
 export async function schoolYears(zone: string): Promise<string[]> {
@@ -416,9 +471,16 @@ export async function getPlanning(opts: { zone: string; schoolYear: string; incl
   const slots = new Map<string, SlotInfo>();
   if (periodsRows.length) {
     const res = await db
-      .select({ r: schema.reservations, schoolName: schema.schools.name, schoolEmail: schema.schools.email })
+      .select({
+        r: schema.reservations,
+        schoolName: schema.schools.name,
+        schoolEmail: schema.schools.email,
+        conventionId: schema.conventions.id,
+        conventionStatus: schema.conventions.status,
+      })
       .from(schema.reservations)
       .innerJoin(schema.schools, eq(schema.schools.id, schema.reservations.schoolId))
+      .leftJoin(schema.conventions, eq(schema.conventions.reservationId, schema.reservations.id))
       .where(
         and(
           inArray(schema.reservations.periodId, periodsRows.map((p) => p.id)),
@@ -428,12 +490,14 @@ export async function getPlanning(opts: { zone: string; schoolYear: string; incl
           ),
         ),
       );
-    for (const { r, schoolName, schoolEmail } of res)
+    for (const { r, schoolName, schoolEmail, conventionId, conventionStatus } of res)
       slots.set(`${r.itemId}:${r.periodId}`, {
         reservationId: r.id,
         status: r.status as "pending" | "confirmed",
         schoolId: r.schoolId,
-        schoolName: schoolName || schoolEmail,
+        schoolName: schoolName || schoolEmail || "École",
+        conventionId,
+        conventionStatus,
       });
   }
   return { periods: periodsRows, items: itemRows, slots };
@@ -454,10 +518,11 @@ export async function defaultSchoolYear(zone: string): Promise<string | null> {
 
 export async function schoolReservations(schoolId: string) {
   return db
-    .select({ r: schema.reservations, item: schema.items, period: schema.periods })
+    .select({ r: schema.reservations, item: schema.items, period: schema.periods, convention: schema.conventions })
     .from(schema.reservations)
     .innerJoin(schema.items, eq(schema.items.id, schema.reservations.itemId))
     .innerJoin(schema.periods, eq(schema.periods.id, schema.reservations.periodId))
+    .leftJoin(schema.conventions, eq(schema.conventions.reservationId, schema.reservations.id))
     .where(and(eq(schema.reservations.schoolId, schoolId), inArray(schema.reservations.status, ["pending", "confirmed"])))
     .orderBy(asc(schema.periods.startDate));
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { CalendarCheck, Clock, Check } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CalendarCheck, Clock, Check, FileText } from "lucide-react";
 import { requireUser, schoolProfileComplete } from "@/lib/auth";
 import { schoolReservations } from "@/lib/reservations";
 import { frLong, periodState } from "@/lib/dates";
@@ -46,7 +47,7 @@ export default async function MyReservations() {
               <section key={k}>
                 <h2 className="mb-3 text-sm font-extrabold uppercase tracking-wider text-muted">{title}</h2>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {groups[k].map(({ r, item, period }) => (
+                  {groups[k].map(({ r, item, period, convention }) => (
                     <article
                       key={r.id}
                       className={cx("crayon overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-card", k === "past" && "opacity-60")}
@@ -72,8 +73,21 @@ export default async function MyReservations() {
                           <br />
                           au {frLong(period.endDate)}
                         </div>
+                        {convention && convention.status !== "cancelled" && (
+                          <Link
+                            href={`/conventions/${convention.id}`}
+                            className={cx(
+                              "mt-4 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold",
+                              convention.status === "signed" ? "bg-surface-2 text-ink-2 hover:text-ink" : "bg-warn-soft text-warn",
+                            )}
+                          >
+                            <FileText className="size-4 shrink-0" />
+                            {convention.status === "signed" ? "Convention signée" : "Convention à signer"}
+                            <ArrowRight className="ml-auto size-4" />
+                          </Link>
+                        )}
                         {k === "upcoming" && (
-                          <LinkButton href={`/?annee=${period.schoolYear}`} variant="secondary" size="sm" className="mt-5">
+                          <LinkButton href={`/?annee=${period.schoolYear}`} variant="secondary" size="sm" className="mt-3">
                             Décaler ou annuler
                           </LinkButton>
                         )}

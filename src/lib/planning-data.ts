@@ -34,9 +34,9 @@ export async function planningData(opts: { zone: string; year?: string; mode: "s
     const mine = !!opts.schoolId && s.schoolId === opts.schoolId;
     slots[k] =
       opts.mode === "admin"
-        ? { reservationId: s.reservationId, status: s.status, mine, schoolName: s.schoolName, schoolId: s.schoolId }
+        ? { reservationId: s.reservationId, status: s.status, mine, schoolName: s.schoolName, schoolId: s.schoolId, conventionId: s.conventionId, conventionStatus: s.conventionStatus }
         : mine
-          ? { reservationId: s.reservationId, status: s.status, mine: true }
+          ? { reservationId: s.reservationId, status: s.status, mine: true, conventionId: s.conventionId, conventionStatus: s.conventionStatus }
           : { reservationId: "", status: s.status === "pending" ? "pending" : "confirmed", mine: false };
   }
   return { years, year, periods, items, slots, today };

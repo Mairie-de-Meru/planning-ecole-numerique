@@ -35,6 +35,10 @@ export const settings = pgTable("settings", {
   maxPerSchoolPerPeriod: integer("max_per_school_per_period").notNull().default(0),
   notifyAdmin: boolean("notify_admin").notNull().default(true),
   appName: text("app_name").notNull().default("Mallettes pédagogiques"),
+  lenderName: text("lender_name").notNull().default("Mairie de Méru"),
+  lenderAddress: text("lender_address").notNull().default("Place de l'Hôtel de Ville, 60110 Méru"),
+  itService: text("it_service").notNull().default("Service informatique de la Mairie de Méru"),
+  itContact: text("it_contact").notNull().default("03 44 52 36 00"),
   lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
   lastSyncStatus: text("last_sync_status"),
 });
@@ -54,11 +58,14 @@ export const allowlist = pgTable("allowlist", {
 
 export const schools = pgTable("schools", {
   id: uuid("id").primaryKey().defaultRandom(),
-  email: text("email").notNull().unique(),
+  /** Adresse de connexion. Vide tant que l'école ne s'est pas rattachée à sa fiche. */
+  email: text("email").unique(),
   name: text("name").notNull().default(""),
   address: text("address").notNull().default(""),
   contactName: text("contact_name").notNull().default(""),
   phone: text("phone").notNull().default(""),
+  directorName: text("director_name").notNull().default(""),
+  directorTitle: text("director_title").notNull().default("Directrice"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -69,6 +76,10 @@ export const items = pgTable("items", {
   contents: text("contents").notNull().default(""),
   photoUrl: text("photo_url"),
   color: text("color"),
+  /** Inventaire repris dans la convention : une ligne par élément. */
+  inventory: text("inventory").notNull().default(""),
+  /** Valeur de remplacement indicative (euros), mentionnée dans la convention. */
+  replacementValue: integer("replacement_value"),
   active: boolean("active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -175,3 +186,39 @@ export const itemPhotos = pgTable("item_photos", {
   data: bytea("data").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Modèle de convention (chaque enregistrement crée une nouvelle version). */
+export const conventionTemplates = pgTable("convention_templates", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  body: text("body").notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const conventionStatus = pgEnum("convention_status", ["to_sign", "signed", "cancelled"]);
+
+/** Convention de prêt liée à une réservation : texte figé au moment de la signature. */
+export const conventions = pgTable("conventions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  number: integer("number").generatedAlwaysAsIdentity().notNull(),
+  reservationId: uuid("reservation_id")
+    .notNull()
+    .unique()
+    .references(() => reservations.id, { onDelete: "cascade" }),
+  templateId: integer("template_id").references(() => conventionTemplates.id),
+  status: conventionStatus("status").notNull().default("to_sign"),
+  body: text("body").notNull(),
+  signerName: text("signer_name"),
+  signerTitle: text("signer_title"),
+  signerEmail: text("signer_email"),
+  signatureMethod: text("signature_method"), // checkbox | drawn | image
+  signatureImage: text("signature_image"), // data:image/png;base64,…
+  signedAt: timestamp("signed_at", { withTimezone: true }),
+  signedIp: text("signed_ip"),
+  emailCopy: boolean("email_copy").notNull().default(false),
+  amendments: jsonb("amendments").notNull().default([]), // { at, text }[]
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Convention = typeof conventions.$inferSelect;

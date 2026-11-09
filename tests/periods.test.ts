@@ -54,3 +54,14 @@ describe("diffPeriods", () => {
     ]);
   });
 });
+
+describe("page réelle service-public.gouv.fr (enregistrée le 9/11/2026)", () => {
+  it("lit les années 2026-2027 et 2027-2028 de la zone B", () => {
+    const html = readFileSync("tests/fixtures/service-public-2026.html", "utf8");
+    const cals = parseServicePublic(html, "B");
+    expect(cals.map((c) => c.schoolYear)).toEqual(["2026-2027", "2027-2028"]);
+    const p = derivePeriods(cals[0]);
+    expect(p.map(({ position, label, startDate, endDate }) => ({ position, label, startDate, endDate }))).toEqual(expectedB);
+    expect(derivePeriods(cals[1])).toHaveLength(5);
+  });
+});

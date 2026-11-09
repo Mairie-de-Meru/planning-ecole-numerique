@@ -48,9 +48,17 @@ function ItemFields({ item, index = 0 }: { item?: Item; index?: number }) {
       <Field label="Description courte" hint="Affichée dans le planning.">
         <Input name="description" defaultValue={item?.description} placeholder="15 tablettes, cycle 3" />
       </Field>
-      <Field label="Contenu détaillé">
-        <Textarea name="contents" defaultValue={item?.contents} placeholder="15 tablettes, chargeur multiple, coques, guide pédagogique…" />
+      <Field label="Présentation" hint="Texte affiché dans le catalogue des écoles.">
+        <Textarea name="contents" defaultValue={item?.contents} className="min-h-20" />
       </Field>
+      <div className="grid gap-5 sm:grid-cols-[1fr_12rem]">
+        <Field label="Inventaire (repris dans la convention)" hint="Une ligne par élément, avec la quantité : « 16 tablettes avec coque ».">
+          <Textarea name="inventory" defaultValue={item?.inventory} className="min-h-32" placeholder={"1 mallette de transport\n16 tablettes avec coque"} />
+        </Field>
+        <Field label="Valeur de remplacement (€)" hint="Facultatif, indiquée dans la convention.">
+          <Input name="replacementValue" type="number" min={0} step={1} defaultValue={item?.replacementValue ?? ""} />
+        </Field>
+      </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <ColorPicker value={item?.color} fallbackIndex={index} />
         <div>

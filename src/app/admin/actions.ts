@@ -66,6 +66,8 @@ export async function saveItemAction(_: ActionResult, form: FormData): Promise<A
     contents: String(form.get("contents") ?? "").trim(),
     sortOrder: Number(form.get("sortOrder") ?? 0) || 0,
     color: String(form.get("color") ?? "") || null,
+    inventory: String(form.get("inventory") ?? "").trim(),
+    replacementValue: Number(form.get("replacementValue")) > 0 ? Math.round(Number(form.get("replacementValue"))) : null,
     active: form.get("active") === "on",
   };
   if (!values.name) return { ok: false, message: "Le nom est obligatoire." };
@@ -204,14 +206,17 @@ export async function removeAllowlistAction(form: FormData) {
 export async function saveSchoolAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   await requireAdmin();
   const id = String(form.get("id") ?? "");
-  const email = normalizeEmail(String(form.get("email") ?? ""));
+  const rawEmail = normalizeEmail(String(form.get("email") ?? ""));
+  const email = rawEmail || null;
   const values = {
     name: String(form.get("name") ?? "").trim(),
     address: String(form.get("address") ?? "").trim(),
-    contactName: String(form.get("contactName") ?? "").trim(),
     phone: String(form.get("phone") ?? "").trim(),
+    directorName: String(form.get("directorName") ?? "").trim(),
+    directorTitle: String(form.get("directorTitle") ?? "").trim() || "Directrice",
   };
-  if (!isValidEmail(email) || !values.name) return { ok: false, message: "Nom et e-mail valides obligatoires." };
+  if (!values.name) return { ok: false, message: "Le nom de l'école est obligatoire." };
+  if (email && !isValidEmail(email)) return { ok: false, message: "Adresse e-mail invalide." };
   try {
     if (id) await db.update(schema.schools).set({ ...values, email }).where(eq(schema.schools.id, id));
     else await db.insert(schema.schools).values({ ...values, email });
@@ -220,6 +225,41 @@ export async function saveSchoolAction(_: ActionResult, form: FormData): Promise
   }
   refresh();
   return { ok: true, message: id ? "École mise à jour." : "École ajoutée." };
+}
+
+/* ---------------- Conventions ---------------- */
+
+export async function saveTemplateAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const body = String(form.get("body") ?? "").replace(/\r\n/g, "\n").trim();
+  if (body.length < 200) return { ok: false, message: "Le modèle semble incomplet." };
+  const { activeTemplate } = await import("@/lib/conventions");
+  const current = await activeTemplate();
+  if (current.body.trim() === body) return { ok: true, message: "Aucune modification." };
+  await db.insert(schema.conventionTemplates).values({ body, createdBy: admin.email });
+  refresh();
+  return { ok: true, message: "Nouvelle version du modèle enregistrée. Elle s'applique aux prochaines conventions ; les conventions déjà signées ne changent pas." };
+}
+
+export async function resetTemplateAction() {
+  const admin = await requireAdmin();
+  const { DEFAULT_TEMPLATE } = await import("@/lib/convention-doc");
+  await db.insert(schema.conventionTemplates).values({ body: DEFAULT_TEMPLATE, createdBy: `${admin.email} (modèle par défaut)` });
+  refresh();
+}
+
+export async function saveLenderAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const v = {
+    lenderName: String(form.get("lenderName") ?? "").trim(),
+    lenderAddress: String(form.get("lenderAddress") ?? "").trim(),
+    itService: String(form.get("itService") ?? "").trim(),
+    itContact: String(form.get("itContact") ?? "").trim(),
+  };
+  if (!v.lenderName || !v.itService) return { ok: false, message: "Le prêteur et le service chargé de la livraison sont obligatoires." };
+  await updateSettings(v);
+  refresh();
+  return { ok: true, message: "Informations enregistrées." };
 }
 
 /* ---------------- Réglages ---------------- */

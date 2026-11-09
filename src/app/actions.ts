@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { and, eq, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { consumeLoginToken, createLoginToken, currentUser, logout, schoolProfileComplete } from "@/lib/auth";
@@ -15,10 +17,25 @@ import {
   moveReservation,
   resendConfirmation,
 } from "@/lib/reservations";
+import {
+  activeTemplate,
+  conventionVars,
+  getConvention,
+  sendConventionEmail,
+  signConvention,
+  type SignInput,
+} from "@/lib/conventions";
+import { fillTemplate, toHtml } from "@/lib/convention-doc";
 
 export type ActionResult = { ok: boolean; message: string; link?: string } | null;
 
+async function clientIp() {
+  const h = await headers();
+  return (h.get("x-forwarded-for") ?? h.get("x-real-ip") ?? "").split(",")[0].trim() || null;
+}
+
 function fail(e: unknown): ActionResult {
+  // ConventionError hérite de BookingError : message affiché tel quel
   if (e instanceof BookingError) return { ok: false, message: e.message };
   console.error(e);
   return { ok: false, message: "Une erreur inattendue est survenue. Réessayez dans un instant." };
@@ -77,12 +94,25 @@ export async function saveProfileAction(_: ActionResult, form: FormData): Promis
     address: String(form.get("address") ?? "").trim(),
     contactName: String(form.get("contactName") ?? "").trim(),
     phone: String(form.get("phone") ?? "").trim(),
+    directorName: String(form.get("directorName") ?? "").trim(),
+    directorTitle: String(form.get("directorTitle") ?? "Directrice").trim(),
   };
   if (!values.name || !values.address) return { ok: false, message: "Le nom de l'école et l'adresse de livraison sont obligatoires." };
-  await db
-    .insert(schema.schools)
-    .values({ email: user.email, ...values })
-    .onConflictDoUpdate({ target: schema.schools.email, set: values });
+  if (!values.directorName) return { ok: false, message: "Indiquez le nom du directeur ou de la directrice (signataire des conventions)." };
+  const claimId = String(form.get("claimId") ?? "");
+  if (user.school) {
+    await db.update(schema.schools).set(values).where(eq(schema.schools.id, user.school.id));
+  } else if (claimId) {
+    // Rattachement à une fiche pré-remplie par le gestionnaire (encore sans adresse e-mail).
+    const done = await db
+      .update(schema.schools)
+      .set({ ...values, email: user.email })
+      .where(and(eq(schema.schools.id, claimId), isNull(schema.schools.email)))
+      .returning({ id: schema.schools.id });
+    if (!done.length) return { ok: false, message: "Cette école est déjà rattachée à une autre adresse. Contactez le gestionnaire." };
+  } else {
+    await db.insert(schema.schools).values({ email: user.email, ...values });
+  }
   revalidatePath("/", "layout");
   if (form.get("first") === "1") redirect("/");
   return { ok: true, message: "Fiche enregistrée." };
@@ -97,12 +127,17 @@ async function requireSchool() {
   return { user, school: user.school! };
 }
 
-export async function bookAction(itemId: string, periodId: string): Promise<ActionResult> {
+export async function bookAction(itemId: string, periodId: string, sign: SignInput): Promise<ActionResult> {
   const { user, school } = await requireSchool();
   try {
-    const { confirmUrl } = await bookReservation({ schoolId: school.id, itemId, periodId, actorEmail: user.email });
+    const { confirmUrl } = await bookReservation({ schoolId: school.id, itemId, periodId, actorEmail: user.email, sign, ip: await clientIp() });
+    // Le signataire est mémorisé pour pré-remplir les prochaines conventions.
+    await db
+      .update(schema.schools)
+      .set({ directorName: sign.signerName.trim(), directorTitle: sign.signerTitle.trim() })
+      .where(eq(schema.schools.id, school.id));
     revalidatePath("/");
-    return { ok: true, message: school.email, link: testMode() ? confirmUrl : undefined };
+    return { ok: true, message: user.email, link: testMode() ? confirmUrl : undefined };
   } catch (e) {
     revalidatePath("/");
     return fail(e);
@@ -174,4 +209,54 @@ export async function moveOptionsAction(reservationId: string) {
     })),
     occupied,
   };
+}
+
+/* ---------------- Conventions ---------------- */
+
+/** Convention pré-remplie affichée avant la réservation. */
+export async function conventionPreviewAction(itemId: string, periodId: string) {
+  const { school } = await requireSchool();
+  const settings = await getSettings();
+  const [item] = await db.select().from(schema.items).where(eq(schema.items.id, itemId));
+  const [period] = await db.select().from(schema.periods).where(eq(schema.periods.id, periodId));
+  if (!item || !period) return null;
+  const t = await activeTemplate();
+  const body = fillTemplate(t.body, conventionVars({ settings, school, item, period, signer: null }));
+  return { html: toHtml(body), signerName: school.directorName, signerTitle: school.directorTitle };
+}
+
+async function ownConvention(id: string) {
+  const user = await currentUser();
+  if (!user) redirect("/connexion");
+  const c = await getConvention(id);
+  if (!c) return { user, c: null };
+  const allowed = user.admin || (user.school && user.school.id === c.school.id);
+  return { user, c: allowed ? c : null };
+}
+
+export async function signConventionAction(conventionId: string, sign: SignInput): Promise<ActionResult> {
+  const { user, c } = await ownConvention(conventionId);
+  if (!c || !user.school) return { ok: false, message: "Convention introuvable." };
+  try {
+    await signConvention({ conventionId, schoolId: user.school.id, email: user.email, ip: await clientIp(), sign });
+    await db
+      .update(schema.schools)
+      .set({ directorName: sign.signerName.trim(), directorTitle: sign.signerTitle.trim() })
+      .where(eq(schema.schools.id, user.school.id));
+    revalidatePath("/", "layout");
+    return { ok: true, message: sign.emailCopy ? "Convention signée. Une copie PDF vous a été envoyée par e-mail." : "Convention signée." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function sendConventionAction(conventionId: string): Promise<ActionResult> {
+  const { c } = await ownConvention(conventionId);
+  if (!c) return { ok: false, message: "Convention introuvable." };
+  try {
+    await sendConventionEmail(conventionId);
+    return { ok: true, message: `Convention envoyée à ${c.school.email}.` };
+  } catch (e) {
+    return fail(e);
+  }
 }

@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import { addDays, frLong } from "./dates";
 
-export type MailAttachment = { filename: string; content: string; contentType: string };
+export type MailAttachment = { filename: string; content: string | Buffer; contentType: string };
 export type Mail = { to: string | string[]; subject: string; html: string; text: string; attachments?: MailAttachment[] };
 
 export function smtpConfigured() {

@@ -8,13 +8,18 @@ Application web de réservation de matériel pédagogique (mallettes) pour les �
 - **Confirmation par e-mail** : la réservation est bloquée 30 min (réglable) en attente du clic de confirmation,
   puis un second e-mail « réservation faite » est envoyé (avec fichier agenda `.ics`).
 - **Décalage** : l'école déplace sa réservation vers une autre période libre, tant que la période n'a pas commencé.
+- **Convention de prêt en ligne** : chaque réservation génère sa convention pré-remplie (école, direction, matériel et
+  inventaire, dates). La directrice ou le directeur l'accepte d'une case à cocher, avec une signature manuscrite facultative
+  (dessinée ou image glissée-déposée), et peut la recevoir en PDF par e-mail. Livraison et reprise par le service informatique.
 - **Accès** : connexion sans mot de passe par lien e-mail, limitée à une **liste blanche** (adresses ou domaines).
+  Les 6 écoles maternelles de Méru sont pré-enregistrées : chaque école se rattache à sa fiche à sa première connexion.
 - **Espace admin** : planning global, attribution/décalage/annulation, mallettes, périodes, écoles, liste blanche,
-  feuille de livraison (impression + CSV), journal des e-mails, réglages (zone, plafond par école, notifications…).
+  feuille de livraison (impression + CSV), conventions (liste, PDF, modèle modifiable et versionné), journal des e-mails,
+  réglages (zone, plafond par école, notifications…).
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript · Tailwind CSS 4 · PostgreSQL + Drizzle ORM · Nodemailer (SMTP) · Vitest.
+Next.js 15 (App Router) · TypeScript · Tailwind CSS 4 · PostgreSQL + Drizzle ORM · Nodemailer (SMTP) · PDFKit · Vitest.
 
 ---
 
@@ -63,7 +68,7 @@ npm run dev
 ```
 
 Sans SMTP en local, le mode test est actif : les liens s'affichent à l'écran et dans la console.
-Données de démo : connectez-vous avec `jules-ferry@ecole-demo.fr` (école) ou l'adresse de `ADMIN_EMAILS`.
+Données de démo : connectez-vous avec une adresse `…@ecole-demo.fr` (puis choisissez une école maternelle) ou avec l'adresse de `ADMIN_EMAILS`.
 
 ```bash
 npm test                      # tests (base PostgreSQL de test : TEST_DATABASE_URL, défaut mallettes_test)
@@ -80,6 +85,7 @@ npm run lint
 | Plafond | Réglage « mallettes par école et par période » (0 = illimité) |
 | Décalage / annulation | Par l'école tant que la période n'a pas commencé ; par l'admin à tout moment |
 | Périodes | Lues sur service-public.gouv.fr, appliquées seulement après validation ; une période **verrouillée** n'est jamais modifiée automatiquement |
+| Conventions | Texte figé à la signature (horodatage, e-mail, adresse IP, méthode). Un décalage met à jour les dates et ajoute une ligne « Modifications ». Le modèle est versionné : le modifier ne change pas les conventions déjà signées |
 | Photos | Envoyées depuis Admin → Mallettes, stockées dans la base (aucun service de fichiers à configurer), 3 Mo max |
 | Liens e-mail | Connexion : 20 min, usage unique. Les liens ouvrent une page avec un bouton, pour que les antivirus de messagerie ne les consomment pas |
 
