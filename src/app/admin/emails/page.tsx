@@ -26,7 +26,7 @@ export default async function EmailsPage() {
               key={m.id}
               summary={
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="font-medium">{m.subject}</span>
+                  <span className="font-semibold">{m.subject}</span>
                   <span className="text-sm text-muted">→ {m.to}</span>
                   <span className="ml-auto flex items-center gap-2 text-xs text-muted">
                     {m.createdAt.toLocaleString("fr-FR", { timeZone: "Europe/Paris", dateStyle: "short", timeStyle: "short" })}

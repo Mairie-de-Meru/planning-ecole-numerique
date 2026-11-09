@@ -166,6 +166,7 @@ export async function moveOptionsAction(reservationId: string) {
     periods: periods.map((p) => ({
       id: p.id,
       label: p.label,
+      position: p.position,
       schoolYear: p.schoolYear,
       startDate: p.startDate,
       endDate: p.endDate,

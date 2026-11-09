@@ -1,48 +1,55 @@
 @import "tailwindcss";
 
+/* Thème « cahier d'écolier » : papier crème, encre bleue, marge rouge, surligneur. */
 :root {
-  --bg: #f6f6f3;
-  --surface: #ffffff;
-  --surface-2: #f1f1ed;
-  --ink: #18181b;
-  --ink-2: #3f3f46;
-  --muted: #71717a;
-  --line: #e4e4e0;
-  --line-strong: #d4d4cf;
-  --accent: #3f5bd8;
+  --bg: #f8f5ee;
+  --grid: rgb(53 99 217 / 0.055);
+  --surface: #fffefb;
+  --surface-2: #f3efe5;
+  --ink: #1d2742;
+  --ink-2: #3c4664;
+  --muted: #6f7790;
+  --line: #e8e2d4;
+  --line-strong: #d8d0bd;
+  --accent: #2f5bd3;
   --accent-ink: #ffffff;
-  --accent-soft: #eaeefc;
-  --accent-line: #c3cdf5;
-  --ok: #15803d;
-  --ok-soft: #e8f5ec;
-  --warn: #b45309;
-  --warn-soft: #fdf3e2;
-  --danger: #b91c1c;
-  --danger-soft: #fdecec;
-  --shadow: 0 1px 2px rgb(24 24 27 / 0.04), 0 4px 16px rgb(24 24 27 / 0.04);
+  --accent-soft: #e4ebfc;
+  --accent-line: #bccbf4;
+  --margin: #e0625b;
+  --highlight: #ffe680;
+  --ok: #2f8a45;
+  --ok-soft: #e2f3e5;
+  --warn: #b26a00;
+  --warn-soft: #fdf0d5;
+  --danger: #c23b33;
+  --danger-soft: #fce6e4;
+  --shadow: 0 1px 0 rgb(29 39 66 / 0.04), 0 6px 20px -8px rgb(29 39 66 / 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111113;
-    --surface: #18181b;
-    --surface-2: #1f1f23;
-    --ink: #f4f4f5;
-    --ink-2: #d4d4d8;
-    --muted: #a1a1aa;
-    --line: #2a2a2f;
-    --line-strong: #3a3a40;
-    --accent: #7c93f0;
-    --accent-ink: #0b0d1a;
-    --accent-soft: #1e2440;
-    --accent-line: #34407a;
-    --ok: #4ade80;
-    --ok-soft: #13261a;
-    --warn: #fbbf24;
-    --warn-soft: #2a2010;
-    --danger: #f87171;
-    --danger-soft: #2c1414;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+    --bg: #12151f;
+    --grid: rgb(140 165 255 / 0.05);
+    --surface: #1a1e2b;
+    --surface-2: #222738;
+    --ink: #eef1fa;
+    --ink-2: #c9cfe2;
+    --muted: #8e96b0;
+    --line: #2b3145;
+    --line-strong: #3a4158;
+    --accent: #7d9bf5;
+    --accent-ink: #0d1226;
+    --accent-soft: #232d52;
+    --accent-line: #34437a;
+    --margin: #ef7d76;
+    --highlight: rgb(255 214 64 / 0.32);
+    --ok: #5fcf7a;
+    --ok-soft: #173022;
+    --warn: #f2b84b;
+    --warn-soft: #33270f;
+    --danger: #f2837c;
+    --danger-soft: #3a1b1a;
+    --shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 8px 24px -10px rgb(0 0 0 / 0.5);
   }
 }
 
@@ -59,13 +66,16 @@
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
   --color-accent-line: var(--accent-line);
+  --color-margin: var(--margin);
+  --color-highlight: var(--highlight);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Nunito Variable", ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --font-hand: "Caveat", "Segoe Print", cursive;
   --shadow-card: var(--shadow);
 }
 
@@ -74,33 +84,60 @@ html {
 }
 
 body {
-  background: var(--bg);
   color: var(--ink);
-  font-feature-settings: "cv11", "ss01";
+  background-color: var(--bg);
+  /* papier à petits carreaux (5 mm) */
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 22px 22px;
   -webkit-font-smoothing: antialiased;
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2.5px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 8px;
+}
+
+/* Trait de surligneur sous un titre */
+.highlight {
+  background-image: linear-gradient(transparent 58%, var(--highlight) 58%, var(--highlight) 92%, transparent 92%);
+  padding: 0 0.15em;
+  margin: 0 -0.15em;
+  box-decoration-break: clone;
+}
+
+/* Lignes Seyès + marge rouge (cartes « page de cahier ») */
+.seyes {
+  background-color: var(--surface);
+  background-image:
+    linear-gradient(90deg, transparent 38px, var(--margin) 38px, var(--margin) 39.5px, transparent 39.5px),
+    repeating-linear-gradient(transparent 0 31px, rgb(53 99 217 / 0.13) 31px 32px);
 }
 
 .hatch {
-  background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--line) 6px 7px);
+  background-image: repeating-linear-gradient(135deg, transparent 0 5px, var(--line-strong) 5px 6px);
+}
+
+/* Couleur « crayon » : définir --c sur l'élément */
+.crayon {
+  --c-soft: color-mix(in srgb, var(--c) 15%, var(--surface));
+  --c-mid: color-mix(in srgb, var(--c) 32%, var(--surface));
+  --c-ink: color-mix(in srgb, var(--c) 72%, var(--ink));
 }
 
 dialog::backdrop {
-  background: rgb(10 10 12 / 0.45);
-  backdrop-filter: blur(2px);
+  background: rgb(18 22 36 / 0.45);
+  backdrop-filter: blur(3px);
 }
 
 dialog[open] {
-  animation: pop 0.16s ease-out;
+  animation: pop 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
 
 @keyframes pop {
-  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
   to { opacity: 1; transform: none; }
 }
 

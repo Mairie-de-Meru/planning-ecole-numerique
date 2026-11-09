@@ -74,14 +74,14 @@ export function renderMail(opts: {
   blocks: Block[];
   button?: { label: string; url: string };
 }): { html: string; text: string } {
-  const accent = "#3f5bd8";
+  const accent = "#2f5bd3";
   const body = opts.blocks
     .map((b) => {
       if (b.kind === "p")
         return `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#334155">${esc(b.text)}</p>`;
       if (b.kind === "note")
         return `<p style="margin:16px 0 0;font-size:13px;line-height:1.5;color:#64748b">${esc(b.text)}</p>`;
-      return `<table role="presentation" width="100%" style="border-collapse:collapse;margin:8px 0 20px;background:#f8fafc;border-radius:12px">${b.rows
+      return `<table role="presentation" width="100%" style="border-collapse:collapse;margin:8px 0 20px;background:#f3efe5;border-radius:12px">${b.rows
         .map(
           ([k, v]) =>
             `<tr><td style="padding:10px 16px;font-size:13px;color:#64748b;width:38%;vertical-align:top">${esc(k)}</td><td style="padding:10px 16px;font-size:14px;color:#0f172a;font-weight:600">${esc(v)}</td></tr>`,
@@ -90,15 +90,15 @@ export function renderMail(opts: {
     })
     .join("");
   const button = opts.button
-    ? `<p style="margin:24px 0 8px"><a href="${esc(opts.button.url)}" style="display:inline-block;background:${accent};color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:10px">${esc(opts.button.label)}</a></p>
+    ? `<p style="margin:24px 0 8px"><a href="${esc(opts.button.url)}" style="display:inline-block;background:${accent};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:12px 22px;border-radius:12px">${esc(opts.button.label)}</a></p>
        <p style="margin:8px 0 0;font-size:12px;color:#94a3b8;word-break:break-all">Ou copiez ce lien : ${esc(opts.button.url)}</p>`
     : "";
-  const html = `<!doctype html><html lang="fr"><body style="margin:0;background:#f1f5f9;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  const html = `<!doctype html><html lang="fr"><body style="margin:0;background:#f8f5ee;font-family:Nunito,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
 <table role="presentation" width="100%" style="padding:32px 12px"><tr><td align="center">
-<table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;padding:32px">
+<table role="presentation" width="100%" style="max-width:560px;background:#fffefb;border:2px solid #e8e2d4;border-radius:20px;padding:32px;border-top:6px solid ${accent}">
 <tr><td>
 <p style="margin:0 0 24px;font-size:13px;font-weight:600;letter-spacing:.02em;color:${accent}">${esc(opts.appName)}</p>
-<h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#0f172a">${esc(opts.title)}</h1>
+<h1 style="margin:0 0 16px;font-size:23px;line-height:1.3;color:#1d2742"><span style="background:linear-gradient(transparent 58%,#ffe680 58%,#ffe680 92%,transparent 92%)">${esc(opts.title)}</span></h1>
 ${body}${button}
 </td></tr></table>
 <p style="margin:16px 0 0;font-size:12px;color:#94a3b8">E-mail automatique — merci de ne pas y répondre.</p>

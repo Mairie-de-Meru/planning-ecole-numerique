@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Clock, Loader2, MailCheck, MapPin, Plus } from "lucide-react";
 import { Modal } from "./client";
@@ -16,8 +16,16 @@ import {
 } from "@/app/actions";
 import { adminCancelAction, adminCreateAction, adminMoveAction } from "@/app/admin/actions";
 
-export type GridPeriod = { id: string; label: string; schoolYear: string; startDate: string; endDate: string; state: "past" | "current" | "upcoming" };
-export type GridItem = { id: string; name: string; description: string; contents: string; active: boolean };
+export type GridPeriod = {
+  id: string;
+  label: string;
+  position: number;
+  schoolYear: string;
+  startDate: string;
+  endDate: string;
+  state: "past" | "current" | "upcoming";
+};
+export type GridItem = { id: string; name: string; description: string; contents: string; active: boolean; color: string };
 export type GridSlot = { reservationId: string; status: "pending" | "confirmed"; mine: boolean; schoolName?: string; schoolId?: string };
 
 type Props = {
@@ -25,6 +33,7 @@ type Props = {
   periods: GridPeriod[];
   items: GridItem[];
   slots: Record<string, GridSlot>;
+  today: string;
   school?: { name: string; address: string };
   schools?: { id: string; name: string; email: string }[];
 };
@@ -34,9 +43,56 @@ type Dialog =
   | { kind: "manage"; item: GridItem; period: GridPeriod; slot: GridSlot }
   | null;
 
+/* ------------------------------------------------------------------ */
+/* Calcul de la frise                                                  */
+/* ------------------------------------------------------------------ */
+
+const DAY = 86_400_000;
+const t = (iso: string) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
+const days = (a: string, b: string) => Math.round((t(b) - t(a)) / DAY);
+const monthFmt = new Intl.DateTimeFormat("fr-FR", { month: "short", timeZone: "UTC" });
+
+type Segment = { kind: "period"; period: GridPeriod; days: number } | { kind: "holiday"; name: string; days: number };
+
+function holidayName(label: string) {
+  const to = label.split("→")[1]?.trim();
+  return to ? `Vacances ${/^[aeiouéèh]/i.test(to) ? "d'" : "de "}${to}` : "Vacances";
+}
+
+function buildTimeline(periods: GridPeriod[], today: string) {
+  const segments: Segment[] = [];
+  periods.forEach((p, i) => {
+    segments.push({ kind: "period", period: p, days: days(p.startDate, p.endDate) + 1 });
+    const next = periods[i + 1];
+    if (next) {
+      const gap = days(p.endDate, next.startDate) - 1;
+      if (gap > 0) segments.push({ kind: "holiday", name: holidayName(p.label).replace("Vacances de ", "").replace("Vacances d'", ""), days: gap });
+    }
+  });
+  const start = periods[0]?.startDate;
+  const end = periods.at(-1)?.endDate;
+  if (!start || !end) return { segments, months: [], todayPct: null as number | null };
+  const total = days(start, end) + 1;
+  const months: { label: string; pct: number }[] = [];
+  const d = new Date(t(start));
+  d.setUTCDate(1);
+  while (d.getTime() <= t(end)) {
+    const iso = d.toISOString().slice(0, 10);
+    const pct = Math.max(0, days(start, iso)) / total;
+    if (pct < 0.985) months.push({ label: monthFmt.format(d).replace(".", ""), pct });
+    d.setUTCMonth(d.getUTCMonth() + 1);
+  }
+  const todayPct = today >= start && today <= end ? (days(start, today) + 0.5) / total : null;
+  return { segments, months, todayPct };
+}
+
+const LABEL_W = "15rem";
+
 export function Planning(props: Props) {
   const [dialog, setDialog] = useState<Dialog>(null);
   const { periods, items, slots, mode } = props;
+  const { segments, months, todayPct } = useMemo(() => buildTimeline(periods, props.today), [periods, props.today]);
+  const columns = `${LABEL_W} ${segments.map((s) => `minmax(0, ${s.days}fr)`).join(" ")}`;
 
   const open = (item: GridItem, period: GridPeriod) => {
     const slot = slots[`${item.id}:${period.id}`];
@@ -50,63 +106,113 @@ export function Planning(props: Props) {
 
   return (
     <>
-      {/* Grand écran : tableau */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-line bg-surface shadow-card md:block">
-        <table className="w-full border-separate border-spacing-0 text-sm">
-          <thead>
-            <tr>
-              <th className="sticky left-0 z-10 w-64 min-w-56 border-b border-line bg-surface px-5 py-4 text-left align-bottom text-xs font-medium uppercase tracking-wide text-muted">
-                Valise
-              </th>
-              {periods.map((p) => (
-                <th key={p.id} className={cx("min-w-36 border-b border-line px-2 py-4 text-left align-bottom font-normal", p.state === "past" && "opacity-50")}>
-                  <div className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
-                    {p.state === "current" && <span className="size-1.5 rounded-full bg-accent" aria-label="En cours" />}
-                    {p.label}
-                  </div>
-                  <div className="mt-0.5 text-xs text-muted">{frRange(p.startDate, p.endDate)}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item, i) => (
-              <tr key={item.id}>
-                <th
-                  scope="row"
-                  className={cx("sticky left-0 z-10 bg-surface px-5 py-3 text-left align-middle font-normal", i < items.length - 1 && "border-b border-line")}
+      {/* Grand écran : frise de l'année scolaire */}
+      <div className="hidden overflow-x-auto rounded-3xl border-2 border-line bg-surface shadow-card md:block">
+        <div className="relative min-w-[60rem]">
+          {/* Mois */}
+          <div className="grid border-b border-line" style={{ gridTemplateColumns: `${LABEL_W} 1fr` }}>
+            <div />
+            <div className="relative h-8">
+              {months.map((m) => (
+                <span
+                  key={m.pct}
+                  className="absolute top-0 flex h-full items-center border-l border-line pl-1.5 text-[11px] font-bold uppercase tracking-wider text-muted"
+                  style={{ left: `${m.pct * 100}%` }}
                 >
-                  <div className="font-medium text-ink">
-                    {item.name} {!item.active && <Badge className="ml-1">inactive</Badge>}
+                  {m.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative">
+            {/* En-tête des périodes */}
+            <div className="grid" style={{ gridTemplateColumns: columns }}>
+              <div className="flex items-end border-b-2 border-line px-5 pb-3 pt-4 text-xs font-bold uppercase tracking-wider text-muted">Valises</div>
+              {segments.map((s, i) =>
+                s.kind === "holiday" ? (
+                  <div key={i} className="hatch flex items-end justify-center border-b-2 border-line pb-2 opacity-70">
+                    <span className="max-h-24 truncate text-[10px] font-bold uppercase tracking-wider text-muted [writing-mode:vertical-rl] rotate-180" title={`Vacances : ${s.name}`}>
+                      {s.name}
+                    </span>
                   </div>
-                  {item.description && <div className="mt-0.5 line-clamp-2 text-xs text-muted">{item.description}</div>}
-                </th>
-                {periods.map((p) => (
-                  <td key={p.id} className={cx("px-1.5 py-2", i < items.length - 1 && "border-b border-line")}>
-                    <Cell mode={mode} period={p} slot={slots[`${item.id}:${p.id}`]} onClick={() => open(item, p)} label={`${item.name}, ${p.label}`} />
-                  </td>
-                ))}
-              </tr>
+                ) : (
+                  <div
+                    key={i}
+                    title={s.period.label}
+                    className={cx(
+                      "relative z-[1] flex min-w-0 flex-col justify-end border-b-2 px-2.5 pb-3 pt-3",
+                      s.period.state === "current" ? "border-accent bg-accent-soft/60" : "border-line",
+                      s.period.state === "past" && "opacity-45",
+                    )}
+                  >
+                    {s.period.state === "current" && <span className="mb-0.5 text-[10px] font-extrabold uppercase tracking-wider text-accent">en cours</span>}
+                    <span className="truncate text-[15px] font-extrabold text-ink">Période {s.period.position}</span>
+                    <div className="truncate text-xs font-semibold text-muted">{frRange(s.period.startDate, s.period.endDate)}</div>
+                  </div>
+                ),
+              )}
+            </div>
+
+            {/* Lignes des valises */}
+            {items.map((item, r) => (
+              <div key={item.id} className="crayon grid" style={{ gridTemplateColumns: columns, ["--c" as string]: item.color }}>
+                <div className={cx("flex min-w-0 items-center gap-3 px-5 py-2.5", r < items.length - 1 && "border-b border-line")}>
+                  <span className="h-9 w-1.5 shrink-0 rounded-full bg-[var(--c)]" />
+                  <div className="min-w-0">
+                    <div className="truncate text-[15px] font-bold text-ink">
+                      {item.name} {!item.active && <Badge className="ml-1">masquée</Badge>}
+                    </div>
+                    {item.description && <div className="truncate text-xs font-semibold text-muted">{item.description}</div>}
+                  </div>
+                </div>
+                {segments.map((s, i) =>
+                  s.kind === "holiday" ? (
+                    <div key={i} className="hatch opacity-50" />
+                  ) : (
+                    <div key={i} className={cx("relative z-[1] min-w-0 p-1.5", r < items.length - 1 && "border-b border-line")}>
+                      <Cell mode={mode} period={s.period} slot={slots[`${item.id}:${s.period.id}`]} onClick={() => open(item, s.period)} label={`${item.name}, période ${s.period.position}`} />
+                    </div>
+                  ),
+                )}
+              </div>
             ))}
-          </tbody>
-        </table>
+
+            {/* Aujourd'hui */}
+            {todayPct !== null && (
+              <div
+                aria-hidden
+                title="Aujourd'hui"
+                className="pointer-events-none absolute bottom-0 top-0 z-0 w-0.5 bg-margin/70"
+                style={{ left: `calc(${LABEL_W} + (100% - ${LABEL_W}) * ${todayPct})` }}
+              >
+                <span className="absolute left-1/2 top-0 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-margin" />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Mobile : cartes par valise */}
+      {/* Mobile : une fiche par valise */}
       <div className="space-y-4 md:hidden">
         {items.map((item) => (
-          <div key={item.id} className="rounded-2xl border border-line bg-surface p-4 shadow-card">
-            <div className="font-medium">{item.name}</div>
-            {item.description && <div className="mt-0.5 text-[13px] text-muted">{item.description}</div>}
-            <ul className="mt-3 divide-y divide-line">
+          <div key={item.id} className="crayon overflow-hidden rounded-2xl border-2 border-line bg-surface shadow-card" style={{ ["--c" as string]: item.color }}>
+            <div className="border-b border-line bg-[var(--c-soft)] px-4 py-3">
+              <div className="font-extrabold text-[var(--c-ink)]">{item.name}</div>
+              {item.description && <div className="text-[13px] font-semibold text-muted">{item.description}</div>}
+            </div>
+            <ul className="divide-y divide-line px-4">
               {periods.map((p) => (
-                <li key={p.id} className={cx("flex items-center justify-between gap-3 py-2.5", p.state === "past" && "opacity-50")}>
+                <li key={p.id} className={cx("flex items-center justify-between gap-3 py-2.5", p.state === "past" && "opacity-45")}>
                   <div className="min-w-0">
-                    <div className="text-sm font-medium">{p.label}</div>
-                    <div className="text-xs text-muted">{frRange(p.startDate, p.endDate)}</div>
+                    <div className="flex items-center gap-1.5 text-sm font-extrabold">
+                      Période {p.position}
+                      {p.state === "current" && <span className="rounded-full bg-accent px-1.5 text-[10px] font-bold text-accent-ink">en cours</span>}
+                    </div>
+                    <div className="text-xs font-semibold text-muted">{frRange(p.startDate, p.endDate)}</div>
                   </div>
-                  <div className="w-36 shrink-0">
-                    <Cell mode={mode} period={p} slot={slots[`${item.id}:${p.id}`]} onClick={() => open(item, p)} label={`${item.name}, ${p.label}`} />
+                  <div className="w-40 shrink-0">
+                    <Cell mode={mode} period={p} slot={slots[`${item.id}:${p.id}`]} onClick={() => open(item, p)} label={`${item.name}, période ${p.position}`} />
                   </div>
                 </li>
               ))}
@@ -117,7 +223,12 @@ export function Planning(props: Props) {
 
       <Legend mode={mode} />
 
-      <Modal open={dialog?.kind === "book"} onClose={() => setDialog(null)} title={dialog?.kind === "book" ? `Réserver « ${dialog.item.name} »` : ""}>
+      <Modal
+        open={dialog?.kind === "book"}
+        onClose={() => setDialog(null)}
+        color={dialog?.item.color}
+        title={dialog?.kind === "book" ? (mode === "admin" ? `Attribuer « ${dialog.item.name} »` : `Réserver « ${dialog.item.name} »`) : ""}
+      >
         {dialog?.kind === "book" &&
           (mode === "school" ? (
             <BookDialog item={dialog.item} period={dialog.period} school={props.school!} onDone={() => setDialog(null)} />
@@ -125,7 +236,7 @@ export function Planning(props: Props) {
             <AdminCreateDialog item={dialog.item} period={dialog.period} schools={props.schools ?? []} onDone={() => setDialog(null)} />
           ))}
       </Modal>
-      <Modal open={dialog?.kind === "manage"} onClose={() => setDialog(null)} title={dialog?.kind === "manage" ? dialog.item.name : ""} size="lg">
+      <Modal open={dialog?.kind === "manage"} onClose={() => setDialog(null)} color={dialog?.item.color} title={dialog?.kind === "manage" ? dialog.item.name : ""} size="lg">
         {dialog?.kind === "manage" && (
           <ManageDialog mode={mode} item={dialog.item} period={dialog.period} slot={dialog.slot} items={items} onDone={() => setDialog(null)} />
         )}
@@ -135,38 +246,37 @@ export function Planning(props: Props) {
 }
 
 function Cell({ mode, period, slot, onClick, label }: { mode: Props["mode"]; period: GridPeriod; slot?: GridSlot; onClick: () => void; label: string }) {
-  const base = "flex h-11 w-full items-center justify-center gap-1.5 rounded-xl px-2 text-[13px] font-medium transition";
+  const base = "flex h-12 w-full min-w-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[13px] font-bold transition-transform";
   if (slot) {
     const clickable = mode === "admin" || slot.mine;
     const pending = slot.status === "pending";
-    const content =
-      mode === "admin" ? (
-        <span className="truncate">{slot.schoolName}</span>
-      ) : slot.mine ? (
-        pending ? (
-          <>
-            <Clock className="size-3.5 shrink-0" /> À confirmer
-          </>
-        ) : (
-          <>
-            <Check className="size-3.5 shrink-0" /> Votre réservation
-          </>
-        )
-      ) : (
-        <span>Réservée</span>
+    let tone: string;
+    let content: React.ReactNode;
+    if (mode === "school" && !slot.mine) {
+      tone = "hatch justify-center bg-surface-2 text-muted";
+      content = <span className="truncate">Réservée</span>;
+    } else if (pending) {
+      tone = "border-2 border-dashed border-[var(--c)] bg-[var(--c-soft)] text-[var(--c-ink)]";
+      content = (
+        <>
+          <Clock className="size-3.5 shrink-0" />
+          <span className="truncate">{mode === "admin" ? slot.schoolName : "À confirmer"}</span>
+        </>
       );
-    const tone =
-      mode === "admin"
-        ? pending
-          ? "border border-dashed border-warn/50 bg-warn-soft text-warn"
-          : "bg-accent-soft text-accent border border-accent-line"
-        : slot.mine
-          ? pending
-            ? "border border-dashed border-warn/50 bg-warn-soft text-warn"
-            : "bg-accent text-accent-ink"
-          : "hatch bg-surface-2 text-muted";
+    } else if (mode === "admin") {
+      tone = "!justify-start border-l-4 border-[var(--c)] bg-[var(--c-soft)] text-[var(--c-ink)]";
+      content = <span className="truncate">{slot.schoolName}</span>;
+    } else {
+      tone = "border-2 border-[var(--c)] bg-[var(--c-mid)] text-[var(--c-ink)] shadow-[0_2px_0_var(--c)]";
+      content = (
+        <>
+          <Check className="size-4 shrink-0" strokeWidth={3} />
+          <span className="truncate">À vous</span>
+        </>
+      );
+    }
     return clickable ? (
-      <button type="button" onClick={onClick} className={cx(base, tone, "hover:brightness-95")} aria-label={`${label} : gérer`} title={slot.schoolName}>
+      <button type="button" onClick={onClick} className={cx(base, tone, "hover:-translate-y-px hover:brightness-[0.97]")} aria-label={`${label} : gérer`} title={slot.schoolName}>
         {content}
       </button>
     ) : (
@@ -175,51 +285,56 @@ function Cell({ mode, period, slot, onClick, label }: { mode: Props["mode"]; per
       </div>
     );
   }
-  if (period.state === "past") return <div className={cx(base, "text-muted")}>—</div>;
+  if (period.state === "past") return <div className={cx(base, "justify-center text-line-strong")}>·</div>;
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={`${label} : libre, réserver`}
-      className={cx(base, "group border border-line text-muted hover:border-accent hover:bg-accent-soft hover:text-accent")}
+      aria-label={`${label} : libre, ${mode === "admin" ? "attribuer" : "réserver"}`}
+      className={cx(
+        base,
+        "group justify-center border-2 border-dashed border-line text-muted/80 hover:border-[var(--c)] hover:bg-[var(--c-soft)] hover:text-[var(--c-ink)]",
+      )}
     >
-      <span className="group-hover:hidden">Libre</span>
-      <span className="hidden items-center gap-1 group-hover:inline-flex">
-        <Plus className="size-3.5" /> {mode === "admin" ? "Attribuer" : "Réserver"}
+      <span className="truncate group-hover:hidden">Libre</span>
+      <span className="hidden items-center gap-1 truncate group-hover:inline-flex">
+        <Plus className="size-4 shrink-0" strokeWidth={3} /> {mode === "admin" ? "Attribuer" : "Réserver"}
       </span>
     </button>
   );
 }
 
 function Legend({ mode }: { mode: Props["mode"] }) {
-  const sw = "inline-block h-3 w-5 rounded";
+  const sw = "inline-block h-3.5 w-6 rounded-md";
+  const c = { ["--c" as string]: "var(--accent)" };
   return (
-    <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
-      <span className="inline-flex items-center gap-2"><span className={cx(sw, "border border-line-strong")} /> Libre</span>
+    <div className="crayon mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold text-muted" style={c}>
+      <span className="inline-flex items-center gap-2"><span className={cx(sw, "border-2 border-dashed border-line-strong")} /> Libre</span>
       {mode === "school" ? (
         <>
-          <span className="inline-flex items-center gap-2"><span className={cx(sw, "bg-accent")} /> Votre réservation</span>
-          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border border-dashed border-warn/50 bg-warn-soft")} /> En attente de confirmation</span>
+          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border-2 border-[var(--c)] bg-[var(--c-mid)]")} /> Réservée par vous</span>
+          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border-2 border-dashed border-[var(--c)] bg-[var(--c-soft)]")} /> À confirmer par e-mail</span>
           <span className="inline-flex items-center gap-2"><span className={cx(sw, "hatch bg-surface-2")} /> Réservée par une autre école</span>
         </>
       ) : (
         <>
-          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border border-accent-line bg-accent-soft")} /> Confirmée</span>
-          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border border-dashed border-warn/50 bg-warn-soft")} /> En attente de confirmation</span>
+          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border-l-4 border-[var(--c)] bg-[var(--c-soft)]")} /> Confirmée</span>
+          <span className="inline-flex items-center gap-2"><span className={cx(sw, "border-2 border-dashed border-[var(--c)] bg-[var(--c-soft)]")} /> En attente de confirmation</span>
         </>
       )}
-      <span className="inline-flex items-center gap-2"><span className="size-1.5 rounded-full bg-accent" /> Période en cours</span>
+      <span className="inline-flex items-center gap-2"><span className="relative h-3.5 w-0.5 rounded bg-margin"><span className="absolute -left-[3px] -top-1 size-2 rounded-full bg-margin" /></span> Aujourd&apos;hui</span>
+      <span className="inline-flex items-center gap-2"><span className={cx(sw, "hatch")} /> Vacances</span>
     </div>
   );
 }
 
 function Facts({ rows }: { rows: [string, React.ReactNode][] }) {
   return (
-    <dl className="divide-y divide-line rounded-xl bg-surface-2 text-sm">
+    <dl className="divide-y divide-dashed divide-line-strong rounded-xl border-2 border-line bg-surface-2/60 text-sm">
       {rows.map(([k, v]) => (
         <div key={k} className="flex gap-4 px-4 py-2.5">
-          <dt className="w-28 shrink-0 text-muted">{k}</dt>
-          <dd className="min-w-0 font-medium text-ink">{v}</dd>
+          <dt className="w-24 shrink-0 font-semibold text-muted">{k}</dt>
+          <dd className="min-w-0 font-bold text-ink">{v}</dd>
         </div>
       ))}
     </dl>
@@ -228,7 +343,7 @@ function Facts({ rows }: { rows: [string, React.ReactNode][] }) {
 
 function periodRows(p: GridPeriod): [string, React.ReactNode][] {
   return [
-    ["Période", `${p.label} (${p.schoolYear})`],
+    ["Période", `Période ${p.position} · ${p.label}`],
     ["Dates", `du ${frLong(p.startDate)} au ${frLong(p.endDate)}`],
   ];
 }
@@ -254,14 +369,15 @@ function BookDialog({ item, period, school, onDone }: { item: GridItem; period: 
         <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-accent-soft text-accent">
           <MailCheck className="size-6" />
         </div>
-        <p className="font-semibold">Plus qu&apos;une étape : confirmez par e-mail</p>
+        <p className="font-hand text-3xl leading-none text-accent">Presque fini !</p>
+        <p className="mt-2 font-extrabold">Confirmez votre réservation par e-mail</p>
         <p className="mt-2 text-sm text-muted">
-          Un lien de confirmation a été envoyé à <span className="font-medium text-ink">{result.message}</span>. La valise vous est réservée en attendant.
+          Un lien de confirmation a été envoyé à <span className="font-semibold text-ink">{result.message}</span>. La valise vous est réservée en attendant.
         </p>
         {result.link && (
           <Alert tone="warn" className="mt-4 text-left">
             <strong>Mode test</strong> —{" "}
-            <a className="font-medium underline" href={result.link}>
+            <a className="font-semibold underline" href={result.link}>
               ouvrir le lien de confirmation
             </a>
           </Alert>
@@ -318,7 +434,7 @@ function AdminCreateDialog({ item, period, schools, onDone }: { item: GridItem; 
     <div className="space-y-5">
       <Facts rows={periodRows(period)} />
       <div className="space-y-1.5">
-        <label htmlFor="school" className="text-sm font-medium">École</label>
+        <label htmlFor="school" className="text-sm font-semibold">École</label>
         <Select id="school" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
           <option value="">Choisir une école…</option>
           {schools.map((s) => (
@@ -357,7 +473,7 @@ function ManageDialog({ mode, item, period, slot, items, onDone }: { mode: Props
       <div className="space-y-5">
         <Alert tone="ok">{result.message}</Alert>
         {result.link && (
-          <Alert tone="warn"><strong>Mode test</strong> — <a className="font-medium underline" href={result.link}>ouvrir le lien de confirmation</a></Alert>
+          <Alert tone="warn"><strong>Mode test</strong> — <a className="font-semibold underline" href={result.link}>ouvrir le lien de confirmation</a></Alert>
         )}
         <Button className="w-full" variant="secondary" onClick={onDone}>Fermer</Button>
       </div>
@@ -369,11 +485,11 @@ function ManageDialog({ mode, item, period, slot, items, onDone }: { mode: Props
     return (
       <div className="space-y-5">
         <p className="text-sm text-muted">
-          Choisissez la nouvelle période. Votre réservation actuelle ({period.label}) reste valable tant que le décalage n&apos;est pas validé.
+          Choisissez la nouvelle période. Votre réservation actuelle (période {period.position}) reste valable tant que le décalage n&apos;est pas validé.
         </p>
         {mode === "admin" && (
           <div className="space-y-1.5">
-            <label htmlFor="titem" className="text-sm font-medium">Valise</label>
+            <label htmlFor="titem" className="text-sm font-semibold">Valise</label>
             <Select id="titem" value={targetItem} onChange={(e) => { setTargetItem(e.target.value); setTarget(""); }}>
               {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
             </Select>
@@ -385,7 +501,7 @@ function ManageDialog({ mode, item, period, slot, items, onDone }: { mode: Props
           <div className="max-h-80 space-y-4 overflow-y-auto pr-1">
             {years.map((y) => (
               <fieldset key={y}>
-                <legend className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">{y}</legend>
+                <legend className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Année {y}</legend>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {opts.periods.filter((p) => p.schoolYear === y).map((p) => {
                     const isCurrent = p.id === period.id && targetItem === item.id;
@@ -402,7 +518,7 @@ function ManageDialog({ mode, item, period, slot, items, onDone }: { mode: Props
                       >
                         <input type="radio" name="target" className="mt-1 accent-[var(--accent)]" disabled={disabled} checked={target === p.id} onChange={() => setTarget(p.id)} />
                         <span>
-                          <span className="block font-medium">{p.label}</span>
+                          <span className="block font-bold">Période {p.position} <span className="font-semibold text-muted">· {p.label}</span></span>
                           <span className="block text-xs text-muted">
                             {frRange(p.startDate, p.endDate)} · {isCurrent ? "actuelle" : taken ? "déjà réservée" : p.state === "current" ? "en cours" : "libre"}
                           </span>

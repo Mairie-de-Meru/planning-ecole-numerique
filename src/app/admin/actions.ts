@@ -66,6 +66,7 @@ export async function saveItemAction(_: ActionResult, form: FormData): Promise<A
     contents: String(form.get("contents") ?? "").trim(),
     photoUrl: String(form.get("photoUrl") ?? "").trim() || null,
     sortOrder: Number(form.get("sortOrder") ?? 0) || 0,
+    color: String(form.get("color") ?? "") || null,
     active: form.get("active") === "on",
   };
   if (!values.name) return { ok: false, message: "Le nom est obligatoire." };

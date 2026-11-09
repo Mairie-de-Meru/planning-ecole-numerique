@@ -20,8 +20,9 @@ export default async function AdminPlanning({ searchParams }: { searchParams: Pr
   return (
     <>
       <PageHeader
+        eyebrow={data.year ? `Année scolaire ${data.year} · zone ${settings.zone}` : undefined}
         title="Planning global"
-        description={`Zone ${settings.zone}. Cliquez sur une case pour attribuer, décaler ou annuler une réservation.`}
+        description="Cliquez sur une case pour attribuer, décaler ou annuler une réservation."
         actions={data.year && <YearTabs years={data.years} current={data.year} base="/admin" />}
       />
       {proposal && (
@@ -29,7 +30,7 @@ export default async function AdminPlanning({ searchParams }: { searchParams: Pr
           <RefreshCw className="size-4 shrink-0" />
           <span>
             De nouvelles dates de vacances ont été détectées.{" "}
-            <Link href="/admin/periodes" className="font-medium underline">
+            <Link href="/admin/periodes" className="font-semibold underline">
               Vérifier et valider
             </Link>
           </span>
@@ -44,7 +45,8 @@ export default async function AdminPlanning({ searchParams }: { searchParams: Pr
           Ajoutez votre première valise depuis l&apos;onglet <Link className="underline" href="/admin/valises">Valises</Link>.
         </EmptyState>
       ) : (
-        <Planning mode="admin" periods={data.periods} items={data.items} slots={data.slots} schools={schools} />
+        <Planning mode="admin" periods={data.periods} items={data.items} slots={data.slots}
+          today={data.today} schools={schools} />
       )}
     </>
   );

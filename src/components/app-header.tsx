@@ -26,12 +26,12 @@ export function AppHeader({ user, appName, section }: { user: CurrentUser; appNa
   return (
     <>
       {testMode() && (
-        <div className="no-print bg-warn-soft px-4 py-1.5 text-center text-xs font-medium text-warn">
+        <div className="no-print bg-warn-soft px-4 py-1.5 text-center text-xs font-semibold text-warn">
           Mode test : les e-mails ne sont pas envoyés, les liens s&apos;affichent à l&apos;écran.
         </div>
       )}
-      <header className="no-print sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-8 sm:px-6">
+      <header className="no-print sticky top-0 z-20 border-b-2 border-line bg-surface/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-8 sm:px-6">
           <div className="flex items-center justify-between gap-4">
             <Link href={section === "admin" ? "/admin" : "/"} className="shrink-0">
               <Brand name={appName} />
@@ -58,7 +58,7 @@ function UserMenu({ user, section }: { user: CurrentUser; section: "school" | "a
       {user.admin && (
         <Link
           href={section === "admin" ? "/" : "/admin"}
-          className="rounded-lg px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft"
+          className="rounded-lg px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent-soft"
         >
           {section === "admin" ? "Vue école" : "Administration"}
         </Link>

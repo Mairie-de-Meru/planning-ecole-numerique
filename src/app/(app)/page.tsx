@@ -17,8 +17,9 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader
+        eyebrow={data.year ? `Année scolaire ${data.year}` : undefined}
         title="Planning des valises"
-        description="Choisissez une valise et une période libre. Premier réservé, premier servi : la réservation est validée par e-mail."
+        description="Choisissez une valise et une période libre. La réservation est validée par e-mail."
         actions={data.year && <YearTabs years={data.years} current={data.year} base="/" />}
       />
       {!data.year ? (
@@ -35,6 +36,7 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
           periods={data.periods}
           items={data.items}
           slots={data.slots}
+          today={data.today}
           school={{ name: user.school!.name, address: user.school!.address }}
         />
       )}

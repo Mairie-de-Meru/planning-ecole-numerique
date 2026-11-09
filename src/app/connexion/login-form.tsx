@@ -15,14 +15,15 @@ export function LoginForm({ initialError }: { initialError?: string }) {
         <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-accent-soft text-accent">
           <MailCheck className="size-6" />
         </div>
-        <h2 className="text-lg font-semibold">Vérifiez votre boîte mail</h2>
+        <p className="font-hand text-4xl leading-none text-accent">C&apos;est parti !</p>
+        <h2 className="mt-2 text-lg font-extrabold">Vérifiez votre boîte mail</h2>
         <p className="mt-2 text-[15px] text-muted">
-          Un lien de connexion a été envoyé à <span className="font-medium text-ink">{state.message}</span>. Il est valable 20 minutes.
+          Un lien de connexion a été envoyé à <span className="font-semibold text-ink">{state.message}</span>. Il est valable 20 minutes.
         </p>
         {state.link && (
           <Alert tone="warn" className="mt-5 text-left">
             <strong>Mode test</strong> — aucun e-mail n&apos;est réellement envoyé.{" "}
-            <a className="font-medium underline" href={state.link}>
+            <a className="font-semibold underline" href={state.link}>
               Ouvrir le lien de connexion
             </a>
           </Alert>

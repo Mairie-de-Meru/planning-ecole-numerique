@@ -3,8 +3,8 @@ import { CircleCheck } from "lucide-react";
 import { getSettings } from "@/lib/settings";
 import { peekByToken } from "@/lib/reservations";
 import { frLong } from "@/lib/dates";
-import { Brand } from "@/components/brand";
-import { Card, buttonClass } from "@/components/ui";
+import { NotebookPage } from "@/components/notebook";
+import { buttonClass } from "@/components/ui";
 import { ConfirmForm } from "./confirm-form";
 
 export const metadata = { title: "Confirmer la réservation" };
@@ -19,18 +19,15 @@ export default async function ConfirmPage({ params }: { params: Promise<{ token:
   const expired = !full || (!confirmed && (full.r.status !== "pending" || (full.r.expiresAt && full.r.expiresAt < new Date())));
 
   return (
-    <main className="grid min-h-dvh place-items-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 flex justify-center">
-          <Brand name={settings.appName} />
-        </div>
-        <Card className="p-7">
+    <NotebookPage appName={settings.appName}>
+      <>
           {confirmed ? (
             <div className="text-center">
               <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-ok-soft text-ok">
                 <CircleCheck className="size-6" />
               </div>
-              <h1 className="text-xl font-semibold tracking-tight">Réservation confirmée</h1>
+              <p className="font-hand text-4xl leading-none text-ok">C&apos;est réservé !</p>
+              <h1 className="mt-2 text-xl font-extrabold tracking-tight">Réservation confirmée</h1>
               <p className="mt-2 text-[15px] text-muted">
                 « {full!.item.name} » est réservée pour la période {full!.period.label}, du {frLong(full!.period.startDate)} au{" "}
                 {frLong(full!.period.endDate)}. Un e-mail récapitulatif vous a été envoyé.
@@ -41,7 +38,7 @@ export default async function ConfirmPage({ params }: { params: Promise<{ token:
             </div>
           ) : expired ? (
             <div className="text-center">
-              <h1 className="text-xl font-semibold tracking-tight">Lien plus valable</h1>
+              <h1 className="text-xl font-extrabold tracking-tight">Lien plus valable</h1>
               <p className="mt-2 text-[15px] text-muted">
                 Cette réservation a déjà été confirmée, annulée, ou le délai de confirmation est dépassé.
               </p>
@@ -51,12 +48,12 @@ export default async function ConfirmPage({ params }: { params: Promise<{ token:
             </div>
           ) : (
             <ConfirmForm token={token}>
-              <h1 className="text-xl font-semibold tracking-tight">Confirmer la réservation</h1>
-              <dl className="mt-5 divide-y divide-line rounded-xl bg-surface-2 text-sm">
+              <h1 className="text-xl font-extrabold tracking-tight">Confirmer la réservation</h1>
+              <dl className="mt-5 divide-y divide-dashed divide-line-strong rounded-xl border-2 border-line bg-surface-2/60 text-sm">
                 {(
                   [
                     ["Valise", full!.item.name],
-                    ["Période", `${full!.period.label} (${full!.period.schoolYear})`],
+                    ["Période", `Période ${full!.period.position} · ${full!.period.label}`],
                     ["Du", frLong(full!.period.startDate)],
                     ["Au", frLong(full!.period.endDate)],
                     ["École", full!.school.name],
@@ -64,14 +61,13 @@ export default async function ConfirmPage({ params }: { params: Promise<{ token:
                 ).map(([k, v]) => (
                   <div key={k} className="flex gap-4 px-4 py-2.5">
                     <dt className="w-20 shrink-0 text-muted">{k}</dt>
-                    <dd className="font-medium">{v}</dd>
+                    <dd className="font-bold">{v}</dd>
                   </div>
                 ))}
               </dl>
             </ConfirmForm>
           )}
-        </Card>
-      </div>
-    </main>
+      </>
+    </NotebookPage>
   );
 }

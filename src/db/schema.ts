@@ -67,6 +67,7 @@ export const items = pgTable("items", {
   description: text("description").notNull().default(""),
   contents: text("contents").notNull().default(""),
   photoUrl: text("photo_url"),
+  color: text("color"),
   active: boolean("active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

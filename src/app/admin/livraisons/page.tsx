@@ -22,6 +22,7 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
   return (
     <>
       <PageHeader
+        eyebrow="La tournée"
         title="Feuille de livraison"
         description="Valises à livrer en début de période et à récupérer à la fin (avant la maintenance des vacances)."
         actions={
@@ -49,7 +50,7 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
                   p.id === selected.id ? "border-accent bg-accent-soft text-ink" : "border-line bg-surface text-muted hover:text-ink",
                 )}
               >
-                <span className="font-medium">{p.label}</span> <span className="text-xs">· {frRange(p.startDate, p.endDate)} {p.schoolYear.slice(2, 4)}/{p.schoolYear.slice(7)}</span>
+                <span className="font-semibold">{p.label}</span> <span className="text-xs">· {frRange(p.startDate, p.endDate)} {p.schoolYear.slice(2, 4)}/{p.schoolYear.slice(7)}</span>
               </Link>
             ))}
           </div>
@@ -66,17 +67,17 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
               <table className="w-full text-sm">
                 <thead className="text-left text-xs uppercase tracking-wide text-muted">
                   <tr>
-                    <th className="px-5 py-3 font-medium">École</th>
-                    <th className="px-5 py-3 font-medium">Adresse de livraison</th>
-                    <th className="px-5 py-3 font-medium">Contact</th>
-                    <th className="px-5 py-3 font-medium">Valise</th>
-                    <th className="no-print px-5 py-3 font-medium">Livrée</th>
+                    <th className="px-5 py-3 font-semibold">École</th>
+                    <th className="px-5 py-3 font-semibold">Adresse de livraison</th>
+                    <th className="px-5 py-3 font-semibold">Contact</th>
+                    <th className="px-5 py-3 font-semibold">Valise</th>
+                    <th className="no-print px-5 py-3 font-semibold">Livrée</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {rows.map(({ r, item, school }) => (
                     <tr key={r.id} className="align-top">
-                      <td className="px-5 py-3 font-medium">{school.name || school.email}</td>
+                      <td className="px-5 py-3 font-semibold">{school.name || school.email}</td>
                       <td className="whitespace-pre-line px-5 py-3 text-ink-2">{school.address}</td>
                       <td className="px-5 py-3 text-ink-2">
                         {school.contactName}

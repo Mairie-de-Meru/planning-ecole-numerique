@@ -48,6 +48,7 @@ export default async function PeriodsPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Le calendrier"
         title="Périodes de réservation"
         description={
           <>
@@ -72,7 +73,7 @@ export default async function PeriodsPage() {
             {(proposal.payload as ProposalChange[]).map((c) => (
               <li key={`${c.schoolYear}-${c.position}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
                 <Badge tone={c.type === "add" ? "ok" : "warn"}>{c.type === "add" ? "Nouvelle" : "Modifiée"}</Badge>
-                <span className="font-medium">{c.label}</span>
+                <span className="font-semibold">{c.label}</span>
                 <span className="text-muted">{c.schoolYear}</span>
                 <span className="ml-auto inline-flex items-center gap-2 text-ink-2">
                   {c.previous && (
@@ -100,7 +101,7 @@ export default async function PeriodsPage() {
       )}
 
       <div className="mb-8">
-        <Disclosure summary={<span className="inline-flex items-center gap-2 font-medium text-accent"><Plus className="size-4" /> Ajouter une période manuellement</span>}>
+        <Disclosure summary={<span className="inline-flex items-center gap-2 font-semibold text-accent"><Plus className="size-4" /> Ajouter une période manuellement</span>}>
           <ActionForm action={savePeriodAction} submitLabel="Ajouter" resetOnSuccess>
             <PeriodFields />
           </ActionForm>
@@ -113,7 +114,7 @@ export default async function PeriodsPage() {
         <div className="space-y-8">
           {years.map((y) => (
             <section key={y}>
-              <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted">{y}</h2>
+              <h2 className="mb-3 font-hand text-3xl leading-none text-accent">Année {y}</h2>
               <div className="space-y-2">
                 {periods
                   .filter((p) => p.schoolYear === y)
@@ -123,7 +124,8 @@ export default async function PeriodsPage() {
                       className={periodState(p) === "past" ? "opacity-60" : undefined}
                       summary={
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                          <span className="font-medium">{p.label}</span>
+                          <span className="font-extrabold">Période {p.position}</span>
+                          <span className="font-semibold text-ink-2">{p.label}</span>
                           <span className="text-sm text-muted">du {frLong(p.startDate)} au {frLong(p.endDate)}</span>
                           <span className="ml-auto flex gap-1.5">
                             {periodState(p) === "current" && <Badge tone="accent">En cours</Badge>}

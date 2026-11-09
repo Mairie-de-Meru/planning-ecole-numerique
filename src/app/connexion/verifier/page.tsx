@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { peekLoginToken } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { Brand } from "@/components/brand";
+import { NotebookPage } from "@/components/notebook";
 import { SubmitButton } from "@/components/client";
-import { Card, buttonClass } from "@/components/ui";
+import { buttonClass } from "@/components/ui";
 import { consumeLoginAction } from "../../actions";
 
 export const metadata = { title: "Connexion" };
@@ -14,17 +14,13 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
   const email = token ? await peekLoginToken(token) : null;
   const settings = await getSettings();
   return (
-    <main className="grid min-h-dvh place-items-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex justify-center">
-          <Brand name={settings.appName} />
-        </div>
-        <Card className="p-7 text-center">
+    <NotebookPage appName={settings.appName}>
+      <div className="text-center">
           {email ? (
             <>
-              <h1 className="text-xl font-semibold tracking-tight">Bienvenue</h1>
+              <p className="font-hand text-5xl leading-none text-accent">Bienvenue !</p>
               <p className="mt-2 text-[15px] text-muted">
-                Connexion en tant que <span className="font-medium text-ink">{email}</span>
+                Connexion en tant que <span className="font-semibold text-ink">{email}</span>
               </p>
               <form action={consumeLoginAction} className="mt-6">
                 <input type="hidden" name="token" value={token} />
@@ -35,15 +31,14 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
             </>
           ) : (
             <>
-              <h1 className="text-xl font-semibold tracking-tight">Lien expiré</h1>
+              <h1 className="text-xl font-extrabold tracking-tight">Lien expiré</h1>
               <p className="mt-2 text-[15px] text-muted">Ce lien de connexion a déjà été utilisé ou n&apos;est plus valable.</p>
               <Link href="/connexion" className={buttonClass("primary", "md", "mt-6 w-full")}>
                 Recevoir un nouveau lien
               </Link>
             </>
           )}
-        </Card>
       </div>
-    </main>
+    </NotebookPage>
   );
 }

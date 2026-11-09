@@ -12,10 +12,11 @@ export default async function SchoolPage({ searchParams }: { searchParams: Promi
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
-        title={first ? "Bienvenue ! Présentez votre école" : "Mon école"}
+        eyebrow={first ? "Bienvenue !" : undefined}
+        title={first ? "Présentez votre école" : "Mon école"}
         description={
           <>
-            Ces informations servent à la livraison des valises. Compte : <span className="font-medium text-ink">{user.email}</span>
+            Ces informations servent à la livraison des valises. Compte : <span className="font-semibold text-ink">{user.email}</span>
           </>
         }
       />

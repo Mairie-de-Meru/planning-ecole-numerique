@@ -31,7 +31,7 @@ export default async function SchoolsPage() {
   const schools = await db.select().from(schema.schools).orderBy(asc(schema.schools.name));
   return (
     <>
-      <PageHeader title="Écoles et accès" description="Seules les adresses de la liste blanche peuvent se connecter. Les écoles créent leur fiche à la première connexion." />
+      <PageHeader eyebrow="Les écoles" title="Écoles et accès" description="Seules les adresses de la liste blanche peuvent se connecter. Les écoles créent leur fiche à la première connexion." />
 
       <section className="mb-12">
         <h2 className="mb-3 font-semibold">Liste blanche</h2>
@@ -63,7 +63,7 @@ export default async function SchoolsPage() {
       <section>
         <h2 className="mb-3 font-semibold">Écoles ({schools.length})</h2>
         <div className="space-y-2">
-          <Disclosure summary={<span className="inline-flex items-center gap-2 font-medium text-accent"><Plus className="size-4" /> Ajouter une école</span>}>
+          <Disclosure summary={<span className="inline-flex items-center gap-2 font-semibold text-accent"><Plus className="size-4" /> Ajouter une école</span>}>
             <ActionForm action={saveSchoolAction} submitLabel="Ajouter" resetOnSuccess>
               <SchoolFields />
             </ActionForm>
@@ -73,7 +73,7 @@ export default async function SchoolsPage() {
               key={s.id}
               summary={
                 <div className="flex flex-wrap items-baseline gap-x-3">
-                  <span className="font-medium">{s.name || <em className="font-normal text-muted">Fiche non remplie</em>}</span>
+                  <span className="font-semibold">{s.name || <em className="font-normal text-muted">Fiche non remplie</em>}</span>
                   <span className="text-sm text-muted">{s.email}</span>
                 </div>
               }

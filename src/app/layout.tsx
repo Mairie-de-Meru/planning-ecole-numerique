@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource-variable/inter";
+import "@fontsource-variable/nunito";
+import "@fontsource/caveat/600.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,8 +10,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f6f3" },
-    { media: "(prefers-color-scheme: dark)", color: "#111113" },
+    { media: "(prefers-color-scheme: light)", color: "#f8f5ee" },
+    { media: "(prefers-color-scheme: dark)", color: "#12151f" },
   ],
 };
 

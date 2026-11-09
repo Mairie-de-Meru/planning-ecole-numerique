@@ -13,7 +13,7 @@ function Toggle({ name, label, hint, defaultChecked }: { name: string; label: st
     <label className="flex items-start gap-3">
       <input type="checkbox" name={name} defaultChecked={defaultChecked} className="mt-0.5 size-4 accent-[var(--accent)]" />
       <span>
-        <span className="block text-sm font-medium">{label}</span>
+        <span className="block text-sm font-semibold">{label}</span>
         {hint && <span className="block text-[13px] text-muted">{hint}</span>}
       </span>
     </label>

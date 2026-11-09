@@ -9,12 +9,13 @@ type Size = "sm" | "md";
 
 export function buttonClass(variant: Variant = "primary", size: Size = "md", extra?: string) {
   return cx(
-    "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap",
+    "inline-flex items-center justify-center gap-2 rounded-xl font-bold transition active:translate-y-px disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap",
     size === "md" ? "h-10 px-4 text-sm" : "h-8 px-3 text-[13px]",
-    variant === "primary" && "bg-accent text-accent-ink hover:opacity-90",
-    variant === "secondary" && "border border-line-strong bg-surface text-ink hover:bg-surface-2",
+    variant === "primary" &&
+      "bg-accent text-accent-ink shadow-[0_2px_0_color-mix(in_srgb,var(--accent)_60%,black)] hover:brightness-110 active:shadow-none",
+    variant === "secondary" && "border border-line-strong bg-surface text-ink shadow-[0_2px_0_var(--line)] hover:bg-surface-2 active:shadow-none",
     variant === "ghost" && "text-ink-2 hover:bg-surface-2",
-    variant === "danger" && "border border-line-strong bg-surface text-danger hover:bg-danger-soft",
+    variant === "danger" && "border border-line-strong bg-surface text-danger shadow-[0_2px_0_var(--line)] hover:bg-danger-soft active:shadow-none",
     extra,
   );
 }
@@ -31,12 +32,15 @@ export function Card({ className, ...props }: ComponentProps<"div">) {
   return <div className={cx("rounded-2xl border border-line bg-surface shadow-card", className)} {...props} />;
 }
 
-export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({ title, description, actions, eyebrow }: { title: string; description?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>
-        {description && <p className="mt-1.5 max-w-2xl text-[15px] text-muted">{description}</p>}
+        {eyebrow && <p className="mb-1 font-hand text-2xl leading-none text-accent">{eyebrow}</p>}
+        <h1 className="text-[28px] font-extrabold tracking-tight text-ink">
+          <span className="highlight">{title}</span>
+        </h1>
+        {description && <p className="mt-2 max-w-2xl text-[15px] text-muted">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
@@ -47,7 +51,7 @@ export function Badge({ tone = "neutral", children, className }: { tone?: "neutr
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold",
         tone === "neutral" && "bg-surface-2 text-ink-2",
         tone === "accent" && "bg-accent-soft text-accent",
         tone === "ok" && "bg-ok-soft text-ok",
@@ -79,7 +83,7 @@ export function Select({ className, ...props }: ComponentProps<"select">) {
 export function Field({ label, hint, children, htmlFor }: { label: string; hint?: ReactNode; children: ReactNode; htmlFor?: string }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-ink">
+      <label htmlFor={htmlFor} className="block text-sm font-bold text-ink">
         {label}
       </label>
       {children}
@@ -109,9 +113,9 @@ export function Alert({ tone = "neutral", children, className }: { tone?: "neutr
 
 export function EmptyState({ icon, title, children }: { icon?: ReactNode; title: string; children?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong px-6 py-16 text-center">
+    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line-strong bg-surface/60 px-6 py-16 text-center">
       {icon && <div className="mb-3 text-muted">{icon}</div>}
-      <p className="font-medium text-ink">{title}</p>
+      <p className="font-hand text-3xl text-ink">{title}</p>
       {children && <div className="mt-1 max-w-md text-sm text-muted">{children}</div>}
     </div>
   );
