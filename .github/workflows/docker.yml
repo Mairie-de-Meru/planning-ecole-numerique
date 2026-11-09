@@ -1,4 +1,3 @@
-# À placer dans le dépôt GitHub sous .github/workflows/docker.yml (voir deploy/COSMOS.md, étape 2).
 # Construit l'image Docker et la publie sur GitHub Container Registry à chaque mise à jour de main.
 name: Image Docker
 

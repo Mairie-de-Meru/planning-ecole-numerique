@@ -21,10 +21,9 @@ Au démarrage, `mallettes-app` met la base à jour tout seul. Sur une base vide,
 
 ## 2. Construction de l'image et accès depuis la VM
 
-**Une seule fois : activer la construction automatique.** Sur GitHub, dans le dépôt : **Add file → Create new file**,
-nom `.github/workflows/docker.yml`, collez le contenu de `deploy/github-workflow-docker.yml`, puis *Commit*.
-L'image est ensuite construite à chaque mise à jour de la branche `main` (onglet **Actions**, environ 5 minutes)
-et publiée sous `ghcr.io/mairie-de-meru/planning-ecole-numerique:latest`.
+L'image est construite automatiquement par GitHub (fichier `.github/workflows/docker.yml`) à chaque mise à jour
+de la branche `main` : onglet **Actions**, environ 5 minutes. Elle est publiée sous
+`ghcr.io/mairie-de-meru/planning-ecole-numerique:latest`.
 
 Comme le dépôt est privé, l'image l'est aussi. Pour que la VM puisse la télécharger, deux possibilités :
 
