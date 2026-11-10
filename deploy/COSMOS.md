@@ -76,7 +76,7 @@ Chaque modification poussée sur `main` produit une nouvelle image en quelques m
 - Conseillé : faites aussi sauvegarder ce volume hors de la VM, avec **Sauvegardes** dans Cosmos ou la sauvegarde habituelle de la VM.
 - Lancer une sauvegarde à la main :
   ```bash
-  docker exec mallettes-cron mallettes-backup
+  docker exec mallettes-cron node dist/scheduler.cjs backup
   ```
 - Restaurer une sauvegarde (remplace le contenu actuel) :
   ```bash
@@ -87,8 +87,19 @@ Chaque modification poussée sur `main` produit une nouvelle image en quelques m
   ```
   puis redémarrez `mallettes-app`.
 
-## 7. En cas de souci
+## 7. Autres tâches à la demande
 
-- Journal de l'application : **ServApps** → `mallettes-app` → *Logs*.
+```bash
+docker exec mallettes-cron node dist/scheduler.cjs sync
+```
+lit les dates de vacances tout de suite ;
+```bash
+docker exec mallettes-cron node dist/scheduler.cjs cleanup
+```
+libère les réservations non confirmées.
+
+## 8. En cas de souci
+
+- Journal de l'application : **ServApps** → `mallettes-app` → *Logs* ; tâches planifiées et sauvegardes : `mallettes-cron` → *Logs*.
 - Les e-mails ne partent pas : **Admin → E-mails** affiche l'erreur exacte (souvent un mot de passe ou un port SMTP).
 - Les dates de vacances ne se mettent pas à jour : **Admin → Périodes** affiche le résultat de la dernière lecture. Vous pouvez toujours saisir ou corriger les périodes à la main.

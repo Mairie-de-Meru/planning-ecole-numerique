@@ -11,12 +11,17 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Pas de base au moment de la construction : les migrations sont jouées au démarrage du conteneur.
 RUN npx next build \
- && npx esbuild scripts/migrate.ts scripts/seed.ts --bundle --platform=node --target=node22 --outdir=dist --out-extension:.js=.cjs --log-level=warning
+ && npx esbuild scripts/migrate.ts scripts/seed.ts scripts/scheduler.ts --bundle --platform=node --target=node22 --outdir=dist --out-extension:.js=.cjs --log-level=warning
 
 FROM node:22-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
-RUN addgroup -S app && adduser -S app -G app
+# pg_dump pour les sauvegardes (conteneur mallettes-cron) : première version disponible,
+# toute version >= 16 sait sauvegarder la base PostgreSQL 16.
+RUN for v in 18 17 16; do apk add --no-cache "postgresql$v-client" && break; done \
+ && pg_dump --version \
+ && addgroup -S app && adduser -S app -G app \
+ && mkdir -p /backups && chown app:app /backups
 COPY --from=build --chown=app:app /app/.next/standalone ./
 COPY --from=build --chown=app:app /app/.next/static ./.next/static
 COPY --from=build --chown=app:app /app/public ./public

@@ -1,6 +1,6 @@
 # Mallettes pédagogiques — déploiement sur la VM de la ville (Cosmos Cloud ou Docker Compose)
 # Remplacez toutes les valeurs « A_REMPLACER » avant d'installer (voir deploy/COSMOS.md).
-name: mallettes
+# Fichier volontairement simple : compatible avec l'import « fichier Compose » de Cosmos Cloud.
 
 services:
   app:
@@ -11,79 +11,60 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://mallettes:A_REMPLACER_MOT_DE_PASSE_BASE@mallettes-db:5432/mallettes
-      APP_URL: https://A_REMPLACER_ADRESSE_DU_SITE
-      AUTH_SECRET: A_REMPLACER_SECRET_LONG_ALEATOIRE
-      CRON_SECRET: A_REMPLACER_AUTRE_SECRET_ALEATOIRE
-      ADMIN_EMAILS: A_REMPLACER_VOTRE_EMAIL
-      SMTP_HOST: ssl0.ovh.net
-      SMTP_PORT: "465"
-      SMTP_USER: A_REMPLACER_BOITE_MAIL_OVH
-      SMTP_PASS: A_REMPLACER_MOT_DE_PASSE_BOITE_MAIL
-      MAIL_FROM: "Mallettes pédagogiques <A_REMPLACER_BOITE_MAIL_OVH>"
-      # TEST_MODE: "1"   # uniquement pour tester sans SMTP, jamais en service
+      - DATABASE_URL=postgres://mallettes:A_REMPLACER_MOT_DE_PASSE_BASE@mallettes-db:5432/mallettes
+      - APP_URL=https://A_REMPLACER_ADRESSE_DU_SITE
+      - AUTH_SECRET=A_REMPLACER_SECRET_LONG_ALEATOIRE
+      - CRON_SECRET=A_REMPLACER_AUTRE_SECRET_ALEATOIRE
+      - ADMIN_EMAILS=A_REMPLACER_VOTRE_EMAIL
+      - SMTP_HOST=ssl0.ovh.net
+      - SMTP_PORT=465
+      - SMTP_USER=A_REMPLACER_BOITE_MAIL_OVH
+      - SMTP_PASS=A_REMPLACER_MOT_DE_PASSE_BOITE_MAIL
+      - MAIL_FROM=Mallettes pédagogiques <A_REMPLACER_BOITE_MAIL_OVH>
     expose:
       - "3000"
-    networks: [mallettes]
+    networks:
+      - mallettes
 
   db:
     image: postgres:16-alpine
     container_name: mallettes-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: mallettes
-      POSTGRES_USER: mallettes
-      POSTGRES_PASSWORD: A_REMPLACER_MOT_DE_PASSE_BASE
+      - POSTGRES_DB=mallettes
+      - POSTGRES_USER=mallettes
+      - POSTGRES_PASSWORD=A_REMPLACER_MOT_DE_PASSE_BASE
     volumes:
       - mallettes-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mallettes -d mallettes"]
+      test: ["CMD", "pg_isready", "-U", "mallettes", "-d", "mallettes"]
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [mallettes]
+    networks:
+      - mallettes
 
-  # Tâches planifiées (lecture des vacances le lundi, nettoyage chaque nuit)
-  # et sauvegarde quotidienne de la base (conservée 30 jours).
+  # Tâches planifiées : lecture des vacances (lundi 5 h 17), nettoyage (3 h 43)
+  # et sauvegarde de la base chaque nuit à 2 h 30, conservée 30 jours.
   cron:
-    image: postgres:16-alpine
+    image: ghcr.io/mairie-de-meru/planning-ecole-numerique:latest
     container_name: mallettes-cron
     restart: unless-stopped
-    depends_on: [app, db]
+    depends_on:
+      app:
+        condition: service_started
+    command: node dist/scheduler.cjs
     environment:
-      CRON_SECRET: A_REMPLACER_AUTRE_SECRET_ALEATOIRE
-      PGHOST: mallettes-db
-      PGUSER: mallettes
-      PGPASSWORD: A_REMPLACER_MOT_DE_PASSE_BASE
-      PGDATABASE: mallettes
-      BACKUP_DAYS: "30"
-      TZ: Europe/Paris
+      - DATABASE_URL=postgres://mallettes:A_REMPLACER_MOT_DE_PASSE_BASE@mallettes-db:5432/mallettes
+      - CRON_SECRET=A_REMPLACER_AUTRE_SECRET_ALEATOIRE
+      - APP_INTERNAL_URL=http://mallettes-app:3000
+      - BACKUP_DAYS=30
     volumes:
       - mallettes-backups:/backups
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        cat > /usr/local/bin/mallettes-backup <<'SH'
-        #!/bin/sh
-        set -e
-        umask 077
-        f="/backups/mallettes-$$(date +%Y-%m-%d).sql.gz"
-        pg_dump --no-owner | gzip > "$$f.tmp" && mv "$$f.tmp" "$$f"
-        find /backups -name 'mallettes-*.sql.gz' -mtime +"$$BACKUP_DAYS" -delete
-        echo "sauvegarde $$f"
-        SH
-        cat > /usr/local/bin/mallettes-call <<'SH'
-        #!/bin/sh
-        wget -q -O - --header "Authorization: Bearer $$CRON_SECRET" "http://mallettes-app:3000/api/cron/$$1"; echo
-        SH
-        chmod +x /usr/local/bin/mallettes-backup /usr/local/bin/mallettes-call
-        printf '%s\n' \
-          '17 5 * * 1 /usr/local/bin/mallettes-call sync' \
-          '43 3 * * * /usr/local/bin/mallettes-call cleanup' \
-          '30 2 * * * /usr/local/bin/mallettes-backup' > /etc/crontabs/root
-        echo "Tâches planifiées actives :"; cat /etc/crontabs/root
-        exec crond -f -l 6
-    networks: [mallettes]
+    healthcheck:
+      test: ["NONE"]
+    networks:
+      - mallettes
 
 volumes:
   mallettes-db:
