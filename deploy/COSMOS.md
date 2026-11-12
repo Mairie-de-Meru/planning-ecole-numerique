@@ -1,12 +1,13 @@
 # Installation sur la VM de la ville (Cosmos Cloud)
 
-L'application tourne dans trois conteneurs, décrits dans `docker-compose.yml` :
+L'application tourne dans deux conteneurs, décrits dans `docker-compose.yml` :
 
 | Conteneur | Rôle |
 |---|---|
-| `mallettes-app` | l'application (port 3000, interne) |
-| `mallettes-db` | la base PostgreSQL (volume `mallettes-db`) |
-| `mallettes-cron` | lecture des vacances le lundi, nettoyage chaque nuit, **sauvegarde de la base chaque nuit** (volume `mallettes-backups`, 30 jours conservés) |
+| `mallettes-app` | l'application (port 3000, interne). Elle exécute aussi les tâches planifiées : lecture des vacances le lundi, nettoyage chaque nuit et **sauvegarde de la base chaque nuit** (volume `mallettes-backups`, 30 jours conservés) |
+| `mallettes-db` | la base PostgreSQL (volume `mallettes-db`), réglée pour une petite base |
+
+Ressources mesurées : environ 120 Mo de mémoire au repos et 160 Mo au plus fort, pour les deux conteneurs réunis.
 
 Au démarrage, `mallettes-app` met la base à jour tout seul. Sur une base vide, il charge aussi les données initiales : les 3 mallettes, les 6 écoles maternelles et les périodes.
 
@@ -39,10 +40,9 @@ Copiez le contenu de `docker-compose.yml` et remplacez chaque `A_REMPLACER…` :
 
 | Valeur | Quoi mettre |
 |---|---|
-| `A_REMPLACER_MOT_DE_PASSE_BASE` (3 fois, identique) | un mot de passe long, sans `@`, `:` ni `/` |
+| `A_REMPLACER_MOT_DE_PASSE_BASE` (2 fois, identique) | un mot de passe long, sans `@`, `:` ni `/` |
 | `A_REMPLACER_ADRESSE_DU_SITE` | `mallettes.ville-meru.fr` (sans `https://`, déjà présent) |
 | `A_REMPLACER_SECRET_LONG_ALEATOIRE` | 32 caractères aléatoires ou plus |
-| `A_REMPLACER_AUTRE_SECRET_ALEATOIRE` (2 fois, identique) | un autre secret aléatoire |
 | `A_REMPLACER_VOTRE_EMAIL` | votre adresse : elle aura l'accès administrateur |
 | `A_REMPLACER_BOITE_MAIL_OVH` (2 fois) | l'adresse de la boîte OVH |
 | `A_REMPLACER_MOT_DE_PASSE_BOITE_MAIL` | son mot de passe |
@@ -76,30 +76,30 @@ Chaque modification poussée sur `main` produit une nouvelle image en quelques m
 - Conseillé : faites aussi sauvegarder ce volume hors de la VM, avec **Sauvegardes** dans Cosmos ou la sauvegarde habituelle de la VM.
 - Lancer une sauvegarde à la main :
   ```bash
-  docker exec mallettes-cron node dist/scheduler.cjs backup
+  docker exec mallettes-app node dist/scheduler.cjs backup
   ```
 - Restaurer une sauvegarde (remplace le contenu actuel) :
   ```bash
   docker exec -i mallettes-db sh -c 'dropdb -U mallettes mallettes && createdb -U mallettes mallettes'
   ```
   ```bash
-  docker exec mallettes-cron sh -c 'gunzip -c /backups/mallettes-AAAA-MM-JJ.sql.gz' | docker exec -i mallettes-db psql -U mallettes -d mallettes
+  docker exec mallettes-app sh -c 'gunzip -c /backups/mallettes-AAAA-MM-JJ.sql.gz' | docker exec -i mallettes-db psql -U mallettes -d mallettes
   ```
   puis redémarrez `mallettes-app`.
 
 ## 7. Autres tâches à la demande
 
 ```bash
-docker exec mallettes-cron node dist/scheduler.cjs sync
+docker exec mallettes-app node dist/scheduler.cjs sync
 ```
 lit les dates de vacances tout de suite ;
 ```bash
-docker exec mallettes-cron node dist/scheduler.cjs cleanup
+docker exec mallettes-app node dist/scheduler.cjs cleanup
 ```
 libère les réservations non confirmées.
 
 ## 8. En cas de souci
 
-- Journal de l'application : **ServApps** → `mallettes-app` → *Logs* ; tâches planifiées et sauvegardes : `mallettes-cron` → *Logs*.
+- Journal de l'application, des tâches planifiées et des sauvegardes : **ServApps** → `mallettes-app` → *Logs* (lignes « [tâches] »).
 - Les e-mails ne partent pas : **Admin → E-mails** affiche l'erreur exacte (souvent un mot de passe ou un port SMTP).
 - Les dates de vacances ne se mettent pas à jour : **Admin → Périodes** affiche le résultat de la dernière lecture. Vous pouvez toujours saisir ou corriger les périodes à la main.

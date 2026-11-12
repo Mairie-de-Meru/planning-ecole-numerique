@@ -1,6 +1,9 @@
 # Mallettes pédagogiques — déploiement sur la VM de la ville (Cosmos Cloud ou Docker Compose)
 # Remplacez toutes les valeurs « A_REMPLACER » avant d'installer (voir deploy/COSMOS.md).
 # Fichier volontairement simple : compatible avec l'import « fichier Compose » de Cosmos Cloud.
+#
+# Deux conteneurs seulement : l'application (qui exécute aussi les tâches planifiées et la
+# sauvegarde quotidienne de la base) et PostgreSQL, réglé pour une petite base.
 
 services:
   app:
@@ -14,13 +17,15 @@ services:
       - DATABASE_URL=postgres://mallettes:A_REMPLACER_MOT_DE_PASSE_BASE@mallettes-db:5432/mallettes
       - APP_URL=https://A_REMPLACER_ADRESSE_DU_SITE
       - AUTH_SECRET=A_REMPLACER_SECRET_LONG_ALEATOIRE
-      - CRON_SECRET=A_REMPLACER_AUTRE_SECRET_ALEATOIRE
       - ADMIN_EMAILS=A_REMPLACER_VOTRE_EMAIL
       - SMTP_HOST=ssl0.ovh.net
       - SMTP_PORT=465
       - SMTP_USER=A_REMPLACER_BOITE_MAIL_OVH
       - SMTP_PASS=A_REMPLACER_MOT_DE_PASSE_BOITE_MAIL
       - MAIL_FROM=Mallettes pédagogiques <A_REMPLACER_BOITE_MAIL_OVH>
+      - BACKUP_DAYS=30
+    volumes:
+      - mallettes-backups:/backups
     expose:
       - "3000"
     networks:
@@ -30,6 +35,8 @@ services:
     image: postgres:16-alpine
     container_name: mallettes-db
     restart: unless-stopped
+    # Réglages « petite base » : moins de mémoire réservée et de connexions
+    command: postgres -c shared_buffers=16MB -c max_connections=20 -c work_mem=2MB -c maintenance_work_mem=16MB -c effective_cache_size=64MB -c max_wal_size=256MB
     environment:
       - POSTGRES_DB=mallettes
       - POSTGRES_USER=mallettes
@@ -38,31 +45,10 @@ services:
       - mallettes-db:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "mallettes", "-d", "mallettes"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 10
-    networks:
-      - mallettes
-
-  # Tâches planifiées : lecture des vacances (lundi 5 h 17), nettoyage (3 h 43)
-  # et sauvegarde de la base chaque nuit à 2 h 30, conservée 30 jours.
-  cron:
-    image: ghcr.io/mairie-de-meru/planning-ecole-numerique:latest
-    container_name: mallettes-cron
-    restart: unless-stopped
-    depends_on:
-      app:
-        condition: service_started
-    command: node dist/scheduler.cjs
-    environment:
-      - DATABASE_URL=postgres://mallettes:A_REMPLACER_MOT_DE_PASSE_BASE@mallettes-db:5432/mallettes
-      - CRON_SECRET=A_REMPLACER_AUTRE_SECRET_ALEATOIRE
-      - APP_INTERNAL_URL=http://mallettes-app:3000
-      - BACKUP_DAYS=30
-    volumes:
-      - mallettes-backups:/backups
-    healthcheck:
-      test: ["NONE"]
+      start_period: 20s
     networks:
       - mallettes
 

@@ -6,7 +6,7 @@ function connect() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL manquant (voir .env.example)");
   // prepare:false => compatible avec les poolers (Neon, Supabase).
-  return drizzle(postgres(url, { prepare: false, max: 5 }), { schema });
+  return drizzle(postgres(url, { prepare: false, max: Number(process.env.DB_POOL ?? 5), idle_timeout: 60 }), { schema });
 }
 
 type Database = ReturnType<typeof connect>;
